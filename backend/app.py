@@ -47,6 +47,10 @@ app.add_middleware(
 def health_check():
     return {"status": "healthy", "message": "API is running", "status_code": 200}
 
+@app.get("/api/frontend-url")
+def get_frontend_url():
+    return {"frontend_urls": FRONTEND_URL}
+
 def ysm(type: str, message: str | dict) -> str:
     """Helper function to yield SSE messages in the correct format"""
     if type == "status":
