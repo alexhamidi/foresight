@@ -6,3 +6,7 @@ openai
 supabase
 arxiv
 numpy
+spacy
+asyncpraw
+beautifulsoup4
+playwright
