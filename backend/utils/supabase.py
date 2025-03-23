@@ -72,8 +72,6 @@ async def add_items(items: List[dict[str, Any]], embeddings: np.ndarray) -> None
 
 def get_items(sources: List[str], embedding: np.ndarray, num_results: int, recency: int, reddit_category_list: List[str], product_hunt_category_list: List[str]) -> List[dict[str, Any]]:
     try:
-        # Add debug logging
-
         # Verify embedding is not null and has correct dimensions
         if embedding is None or len(embedding) == 0:
             raise ValueError("Empty embedding vector")
@@ -88,12 +86,30 @@ def get_items(sources: List[str], embedding: np.ndarray, num_results: int, recen
             'recency': recency
         }).execute()
 
-        if not response.data:
-            # Query the table directly to check if data exists
-            check_data = supabase.table('items').select('*').in_('source', sources).limit(1).execute()
-            print(f"Data check response: {check_data}")
+        # If we got data from RPC, return it
+        if response.data:
+            return response.data
 
-        return response.data
+        # If no data from RPC, check if items exist
+        check_data = supabase.table('items').select('*').in_('source', sources).limit(num_results).execute()
+        print(f"Data check response: {check_data.data}")
+
+        if check_data.data:
+            # Calculate similarities for the items we found
+            for item in check_data.data:
+                if item.get('embedding') and isinstance(item['embedding'], list):
+                    item_embedding = np.array(item['embedding'])
+                    # Calculate cosine similarity
+                    similarity = 1 - np.dot(embedding, item_embedding) / (np.linalg.norm(embedding) * np.linalg.norm(item_embedding))
+                    item['similarity'] = float(similarity)
+                else:
+                    item['similarity'] = 0.0
+
+            # Sort by similarity
+            check_data.data.sort(key=lambda x: x['similarity'], reverse=True)
+            return check_data.data
+
+        return []
     except Exception as e:
         logging.error(f"Error performing vector search: {str(e)}")
         raise

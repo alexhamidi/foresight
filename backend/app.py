@@ -121,16 +121,16 @@ async def search(
 
             sources = valid_sources.split(",")
             query_embedding = await emb.create_embedding(query)
-            items = sup.get_items(sources, query_embedding, num_results*3, recency, reddit_category_list, product_hunt_category_list) if "arxiv" not in sources else []
-
+            items = sup.get_items(sources, query_embedding, num_results, recency, reddit_category_list, product_hunt_category_list) if "arxiv" not in sources else []
+            print(items)
             if "arxiv" in sources:
                 arxiv_items = await arxiv.get_arxiv_items(query, query_embedding, arxiv_category_list, num_results, recency)
                 items.extend(arxiv_items)
 
             yield ysm("status", f"Found {len(items)} matching results in initial search")
 
+            # Sort by similarity score
             items.sort(key=lambda x: x['similarity'], reverse=True)
-
             results = items[:num_results]
 
             yield ysm("status", f"Filtered to {len(results)} results")
