@@ -4,7 +4,7 @@ import FeatureBadges from "@/components/FeatureBadges";
 import SearchForm from "@/components/SearchForm";
 import SearchResults from "@/components/SearchResults";
 import StreamingStatus from '@/components/StreamingStatus';
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Item, StreamMessage, SearchFilters  } from "@/interfaces";
 import DynamicGrid from "@/components/DynamicGrid";
 
@@ -103,7 +103,9 @@ export default function Home() {
           </div>
 
           <div className="">
-            <SearchForm onSearch={handleSearch} isLoading={isLoading} />
+            <Suspense fallback={<div className="animate-pulse h-[200px] bg-zinc-100 rounded-lg"></div>}>
+              <SearchForm onSearch={handleSearch} isLoading={isLoading} />
+            </Suspense>
 
             <div className="">
               {streamMessages.length > 0 && (
