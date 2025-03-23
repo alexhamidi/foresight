@@ -36,7 +36,6 @@ const resultCountOptions = [
       ]
     : [
         { value: '10', label: '10 results' },
-        { value: '25', label: '25 results' },
       ]
   ),
 ] as const;
