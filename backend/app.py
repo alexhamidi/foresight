@@ -18,7 +18,12 @@ import asyncio
 
 load_dotenv()
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "").split(",")
+# Define allowed origins
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://foresight-flax.vercel.app").split(",")
+ALLOWED_ORIGINS = [
+    "https://foresight-flax.vercel.app",
+    "http://localhost:3000",  # For local development
+]
 CURR_DB_SIZE = 0
 
 if not FRONTEND_URL:
@@ -31,12 +36,13 @@ async def startup_event():
     global CURR_DB_SIZE
     CURR_DB_SIZE = sup.get_db_size()
     logging.info(f"Initialized DB size: {CURR_DB_SIZE}")
+    logging.info(f"Allowed origins: {ALLOWED_ORIGINS}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=FRONTEND_URL,
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
