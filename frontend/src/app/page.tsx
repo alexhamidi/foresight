@@ -57,19 +57,22 @@ export default function Home() {
         for (const line of lines) {
           if (line.trim() && line.startsWith('data: ')) {
             try {
-              const data = JSON.parse(line.slice(5));
+              // Remove any potential trailing whitespace and handle escaped characters
+              const jsonStr = line.slice(5).trim();
+              const data = JSON.parse(jsonStr);
 
-              setStreamMessages(prev => [...prev, data]);
-
-              if (data.type === 'results') {
+              if (data.type === 'results' && Array.isArray(data.items)) {
                 setItems(data.items);
                 setIsLoading(false);
               } else if (data.type === 'error') {
                 throw new Error(data.message);
+              } else if (data.type === 'status') {
+                setStreamMessages(prev => [...prev, data]);
               }
-
             } catch (parseError) {
-              console.error('Error parsing stream data:', parseError);
+              console.error('Error parsing stream data:', parseError, '\nProblematic line:', line);
+              // Don't throw here - continue processing other messages
+              continue;
             }
           }
         }

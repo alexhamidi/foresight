@@ -22,7 +22,7 @@ load_dotenv()
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://foresight-flax.vercel.app").split(",")
 ALLOWED_ORIGINS = [
     "https://foresight-flax.vercel.app",
-    "http://localhost:3000",  # For local development
+    "http://localhost:3002",  # For local development
 ]
 CURR_DB_SIZE = 0
 
@@ -57,14 +57,21 @@ def health_check():
 def get_frontend_url():
     return {"frontend_urls": FRONTEND_URL}
 
+import json
+
 def ysm(type: str, message: str | dict) -> str:
     """Helper function to yield SSE messages in the correct format"""
     if type == "status":
         print("message: ", message)
-    return "data: " + json.dumps({
-        "type": type,
-        "items" if type == "results" else "message": message
-    }) + "\n\n"
+
+    # Ensure proper JSON encoding of the message
+    if isinstance(message, str):
+        message_data = {"type": type, "message": message}
+    else:
+        message_data = {"type": type, "items" if type == "results" else "message": message}
+
+    # Use json.dumps to properly escape special characters
+    return f"data: {json.dumps(message_data)}\n\n"
 
 
 @app.get("/api/search")
