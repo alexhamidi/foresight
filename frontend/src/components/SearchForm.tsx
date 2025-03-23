@@ -27,10 +27,17 @@ const sourceOptions = [
 ] as const;
 
 const resultCountOptions = [
-  { value: '10', label: '10 results' },
-  { value: '25', label: '25 results' },
-  { value: '50', label: '50 results' },
-  { value: '100', label: '100 results' },
+  ...(process.env.NODE_ENV === 'development'
+    ? [
+      { value: '10', label: '10 results' },
+        { value: '25', label: '25 results' },
+        { value: '50', label: '50 results' },
+        { value: '100', label: '100 results' },
+      ]
+    : [
+        { value: '10', label: '10 results' },
+      ]
+  ),
 ] as const;
 
 const dateRangeOptions = [
