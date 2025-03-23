@@ -2,30 +2,36 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface StreamingStatusProps {
-  messages: {
-    type: string;
-    message: string;
-  }[];
+  messages: string[];
 }
 
 export default function StreamingStatus({ messages }: StreamingStatusProps) {
   const [displayedMessages, setDisplayedMessages] = useState<string[]>([]);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [currentCharIndex, setCurrentCharIndex] = useState(0);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // When collapsed, immediately show all messages
+  useEffect(() => {
+    if (isCollapsed) {
+      setDisplayedMessages(messages);
+      setCurrentMessageIndex(messages.length);
+      setCurrentCharIndex(0);
+    }
+  }, [isCollapsed, messages]);
 
   useEffect(() => {
     if (!messages.length || currentMessageIndex >= messages.length) return;
     if (isCollapsed) return;
 
-    const currentMessage = messages[currentMessageIndex].message || '';
+    const currentMessage = messages[currentMessageIndex];
 
     if (currentCharIndex >= currentMessage.length) {
       // Move to next message after a short delay
       const timer = setTimeout(() => {
         setCurrentMessageIndex(prev => prev + 1);
         setCurrentCharIndex(0);
-      }, 0);
+      }, 50);
       return () => clearTimeout(timer);
     }
 
@@ -36,36 +42,24 @@ export default function StreamingStatus({ messages }: StreamingStatusProps) {
         if (currentMessageIndex >= newMessages.length) {
           newMessages.push('');
         }
-        newMessages[currentMessageIndex] = currentMessage.slice(0, currentCharIndex + 1);
+        newMessages[currentMessageIndex] = messages[currentMessageIndex].slice(0, currentCharIndex + 1);
         return newMessages;
       });
       setCurrentCharIndex(prev => prev + 1);
-    }, 10);
+    }, 20);
 
     return () => clearTimeout(timer);
   }, [messages, currentMessageIndex, currentCharIndex, isCollapsed]);
 
-  // When collapsed, immediately show all messages
-  useEffect(() => {
-    if (isCollapsed) {
-      setDisplayedMessages(messages.map(m => m.message));
-      setCurrentMessageIndex(messages.length);
-      setCurrentCharIndex(0);
-    }
-  }, [isCollapsed, messages]);
-
-  if (!messages.length) return null;
-
   return (
     <div className="rounded-lg p-4 relative">
-        <button
-            onClick={() => setIsCollapsed(prev => !prev)}
-            className=" rounded-full transition-colors  flex items-center mb-2"
-        >
-
+      <button
+        onClick={() => setIsCollapsed(prev => !prev)}
+        className="rounded-full transition-colors flex items-center mb-2"
+      >
         {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
         <span className="ml-2">
-        {messages.some(m => m.type === 'results') ? "Finished" : "Searching..."}
+          {messages.some(m => m.includes("Found")) ? "Finished" : "Searching..."}
         </span>
       </button>
 
@@ -74,7 +68,7 @@ export default function StreamingStatus({ messages }: StreamingStatusProps) {
           {displayedMessages.map((text, index) => (
             <p key={index} className="text-sm text-gray-600">
               {text}
-              {!isCollapsed && index === currentMessageIndex && currentCharIndex < messages[currentMessageIndex]?.message.length && (
+              {!isCollapsed && index === currentMessageIndex && currentCharIndex < messages[currentMessageIndex]?.length && (
                 <span className="animate-pulse ml-0.5">▋</span>
               )}
             </p>

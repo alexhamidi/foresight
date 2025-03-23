@@ -13,15 +13,13 @@ export default function Home() {
   const [items, setItems] = useState<Item[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [streamMessages, setStreamMessages] = useState<StreamMessage[]>([]);
-
-
+  const [statusMessages, setStatusMessages] = useState<string[]>([]);
 
   const handleSearch = async (query: string, sources: string[], filters: SearchFilters) => {
     setIsLoading(true);
     setError(null);
     setItems(null);
-    setStreamMessages([]);
+    setStatusMessages([]);
 
     try {
       const params = {
@@ -45,44 +43,67 @@ export default function Home() {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No reader available');
 
+      let buffer = ''; // Buffer for incomplete chunks
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        // Convert the chunk to text
+        // Convert the chunk to text and add to buffer
         const chunk = new TextDecoder().decode(value);
-        const lines = chunk.split('\n');
+        buffer += chunk;
 
-        // Process each line
+        // Split buffer into lines and process complete ones
+        const lines = buffer.split('\n');
+
+        // Keep the last line in buffer if it's incomplete
+        buffer = lines.pop() || '';
+
+        // Process each complete line
         for (const line of lines) {
           if (line.trim() && line.startsWith('data: ')) {
             try {
-              const data = JSON.parse(line.slice(5));
+              const jsonStr = line.slice(5).trim();
+              const data = JSON.parse(jsonStr);
 
-              setStreamMessages(prev => [...prev, data]);
-
-              if (data.type === 'results') {
+              if (data.type === 'status') {
+                setStatusMessages(prev => [...prev, data.message]);
+              } else if (data.type === 'results') {
                 setItems(data.items);
                 setIsLoading(false);
               } else if (data.type === 'error') {
                 throw new Error(data.message);
               }
-
             } catch (parseError) {
               console.error('Error parsing stream data:', parseError);
+              // Don't throw here - continue processing other messages
             }
           }
         }
       }
+
+      // Process any remaining data in the buffer
+      if (buffer.trim() && buffer.startsWith('data: ')) {
+        try {
+          const jsonStr = buffer.slice(5).trim();
+          const data = JSON.parse(jsonStr);
+
+          if (data.type === 'status') {
+            setStatusMessages(prev => [...prev, data.message]);
+          } else if (data.type === 'results') {
+            setItems(data.items);
+            setIsLoading(false);
+          }
+        } catch (parseError) {
+          console.error('Error parsing final buffer:', parseError);
+        }
+      }
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setItems(null);
     } finally {
-      // Only set loading to false if we haven't already done so
-      setIsLoading(prev => {
-        if (prev) console.log('Search completed or errored');
-        return false;
-      });
+      setIsLoading(false);
     }
   };
 
@@ -108,8 +129,8 @@ export default function Home() {
             </Suspense>
 
             <div className="">
-              {streamMessages.length > 0 && (
-                <StreamingStatus messages={streamMessages} />
+              {statusMessages.length > 0 && (
+                <StreamingStatus messages={statusMessages} />
               )}
 
               {!isLoading && items && <SearchResults items={items} error={error} isLoading={false} />}
@@ -120,3 +141,4 @@ export default function Home() {
     </main>
   );
 }
+

@@ -57,21 +57,25 @@ def health_check():
 def get_frontend_url():
     return {"frontend_urls": FRONTEND_URL}
 
-import json
 
 def ysm(type: str, message: str | dict) -> str:
     """Helper function to yield SSE messages in the correct format"""
-    if type == "status":
-        print("message: ", message)
+    try:
+        if type == "results":
+            # For results, use a specific format with items array
+            message_data = {"type": type, "items": message}
+        else:
+            # For status and error messages, use message field
+            message_str = str(message) if isinstance(message, (str, int, float)) else json.dumps(message)
+            message_data = {"type": type, "message": message_str}
 
-    # Ensure proper JSON encoding of the message
-    if isinstance(message, str):
-        message_data = {"type": type, "message": message}
-    else:
-        message_data = {"type": type, "items" if type == "results" else "message": message}
-
-    # Use json.dumps to properly escape special characters
-    return f"data: {json.dumps(message_data)}\n\n"
+        # Use json.dumps with ensure_ascii=False to properly handle Unicode
+        json_str = json.dumps(message_data, ensure_ascii=False, default=str)
+        return f"data: {json_str}\n\n"
+    except Exception as e:
+        print(f"Error in ysm: {str(e)}")
+        # Return a safe fallback message
+        return f"data: {json.dumps({'type': 'error', 'message': 'Error formatting message'})}\n\n"
 
 
 @app.get("/api/search")
@@ -104,48 +108,50 @@ async def search(
 
     async def event_generator():
         try:
-
-
-
-
             yield ysm("status", "Analyzing your search query...")
 
             ai_analysis = ai.analyze_query(query)
+            yield ysm("status", f"Problem Statement: {str(ai_analysis.get('problem_statement', ''))}")
+            yield ysm("status", f"Target Users: {str(ai_analysis.get('target_users', ''))}")
 
-            yield ysm("status", f"Extracting Problem Statement: {ai_analysis['problem_statement']}")
-
-            yield ysm("status", f"Extracting Target Users: {ai_analysis['target_users']}")
-
-            yield ysm("status", f"Applying Metadata Filters: {', '.join(ai_analysis['terms'])}")
-
+            if ai_analysis.get('terms'):
+                yield ysm("status", f"Applying Filters: {', '.join(str(t) for t in ai_analysis['terms'])}")
 
             sources = valid_sources.split(",")
             query_embedding = await emb.create_embedding(query)
-            items = sup.get_items(sources, query_embedding, num_results, recency, reddit_category_list, product_hunt_category_list) if "arxiv" not in sources else []
-            print(items)
+            items = []
+
+            if set(sources) - {"arxiv"}:
+                items = sup.get_items(sources, query_embedding, num_results, recency,
+                                reddit_category_list, product_hunt_category_list)
+
             if "arxiv" in sources:
-                arxiv_items = await arxiv.get_arxiv_items(query, query_embedding, arxiv_category_list, num_results, recency)
+                arxiv_items = await arxiv.get_arxiv_items(query, query_embedding,
+                                                        arxiv_category_list, num_results, recency)
                 items.extend(arxiv_items)
 
-            yield ysm("status", f"Found {len(items)} matching results in initial search")
+            yield ysm("status", f"Found {len(items)} matching results")
 
-            # Sort by similarity score
+            # Sort and clean results
             items.sort(key=lambda x: x['similarity'], reverse=True)
             results = items[:num_results]
 
-            yield ysm("status", f"Filtered to {len(results)} results")
+            # Clean the results for JSON serialization
+            cleaned_results = []
+            for item in results:
+                cleaned_item = {}
+                for k, v in item.items():
+                    if isinstance(v, (int, float, bool, list, dict)):
+                        cleaned_item[k] = v
+                    else:
+                        cleaned_item[k] = str(v)
+                cleaned_results.append(cleaned_item)
 
-
-
-            yield ysm("results", results)
-
-
-
-
+            yield ysm("results", cleaned_results)
 
         except Exception as e:
             logging.error(f"Search error: {str(e)}")
-            yield ysm("error", f"Search error: {str(e)}")
+            yield ysm("error", str(e))
 
     return StreamingResponse(
         event_generator(),
