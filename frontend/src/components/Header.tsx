@@ -15,9 +15,6 @@ export function Header() {
 
   return (
     <header className="flex items-center gap-4 w-full justify-end px-6 py-4 ">
-      <button className="z-50" onClick={() => {
-            throw new Error('Test error');
-          }}>Test Error</button>
       {process.env.NODE_ENV === 'development' && <>
         {isLoaded && (
 
