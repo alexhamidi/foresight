@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from '@/components/Header';
 import { ClerkProvider } from '@clerk/nextjs';
+import { Toaster } from "@/components/ui/toaster"
+import { Analytics } from '@vercel/analytics/react';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -21,10 +23,12 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body className={`${inter.variable} font-sans bg-white`}>
+      <html lang="en" data-ailoaded="true">
+        <body className={`${inter.variable} font-sans bg-white`} data-ailoaded="true">
           <Header />
           {children}
+          <Toaster />
+          <Analytics />
         </body>
       </html>
     </ClerkProvider>

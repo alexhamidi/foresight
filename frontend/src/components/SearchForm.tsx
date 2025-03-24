@@ -11,7 +11,7 @@ import CategoriesModal from "./CategoriesModal";
 import SearchSuggestions from "./SearchSuggestions";
 import { SearchFilters } from "@/interfaces";
 
-type SourceOption = 'reddit' | 'product_hunt' | 'arxiv' | 'hacker_news';
+type SourceOption = 'reddit' | 'product_hunt' | 'y_combinator' | 'arxiv' | 'hacker_news';
 
 interface SearchFormProps {
   onSearch: (query: string, sources: string[], filters: SearchFilters) => Promise<void>;
@@ -22,22 +22,16 @@ interface SearchFormProps {
 const sourceOptions = [
   { value: 'reddit', label: 'Reddit' },
   { value: 'product_hunt', label: 'Product Hunt' },
+  { value: 'y_combinator', label: 'Y Combinator' },
   { value: 'arxiv', label: 'Arxiv' },
   { value: 'hacker_news', label: 'Hacker News' },
 ] as const;
 
 const resultCountOptions = [
-  ...(process.env.NODE_ENV === 'development'
-    ? [
-      { value: '10', label: '10 results' },
-        { value: '25', label: '25 results' },
-        { value: '50', label: '50 results' },
-        { value: '100', label: '100 results' },
-      ]
-    : [
-        { value: '10', label: '10 results' },
-      ]
-  ),
+  { value: '10', label: '10 results' },
+  { value: '25', label: '25 results' },
+  { value: '50', label: '50 results' },
+  { value: '100', label: '100 results' },
 ] as const;
 
 const dateRangeOptions = [
@@ -58,17 +52,26 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
   const [arxivModalOpen, setArxivModalOpen] = useState(false);
   const [redditModalOpen, setRedditModalOpen] = useState(false);
   const [productHuntModalOpen, setProductHuntModalOpen] = useState(false);
+  const [yCombinatorModalOpen, setYCombinatorModalOpen] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>({
-    daysAgo: 30,
+    daysAgo: 20000,
     resultsPerSource: 25,
     arxivCategories: [],
     redditCategories: [],
     productHuntCategories: [],
+    yCombinatorCategories: [],
   });
 
   const handleSourceChange = (source: SourceOption) => {
     setSelectedSources(prev => {
       if (prev.includes(source)) {
+        setFilters(prevFilters => ({
+          ...prevFilters,
+          arxivCategories: source === 'arxiv' ? [] : prevFilters.arxivCategories,
+          redditCategories: source === 'reddit' ? [] : prevFilters.redditCategories,
+          productHuntCategories: source === 'product_hunt' ? [] : prevFilters.productHuntCategories,
+          yCombinatorCategories: source === 'y_combinator' ? [] : prevFilters.yCombinatorCategories,
+        }));
         return prev.filter(s => s !== source);
       } else {
         return [...prev, source];
@@ -84,6 +87,8 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
       setRedditModalOpen(true);
     } else if (source === 'product_hunt') {
       setProductHuntModalOpen(true);
+    } else if (source === 'y_combinator') {
+      setYCombinatorModalOpen(true);
     }
   };
 
@@ -227,9 +232,19 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             type="product_hunt"
             open={productHuntModalOpen}
             onOpenChange={setProductHuntModalOpen}
-            selectedCategories={filters.productHuntCategories || [] }
+            selectedCategories={filters.productHuntCategories || []}
             onCategoriesChange={(categories) =>
               setFilters(prev => ({ ...prev, productHuntCategories: categories }))
+            }
+          />
+
+          <CategoriesModal
+            type="y_combinator"
+            open={yCombinatorModalOpen}
+            onOpenChange={setYCombinatorModalOpen}
+            selectedCategories={filters.yCombinatorCategories || []}
+            onCategoriesChange={(categories) =>
+              setFilters(prev => ({ ...prev, yCombinatorCategories: categories }))
             }
           />
         </CardContent>

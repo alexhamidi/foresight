@@ -30,6 +30,7 @@ export default function Home() {
         arxiv_categories: filters.arxivCategories?.join(',') || '',
         reddit_categories: filters.redditCategories?.join(',') || '',
         product_hunt_categories: filters.productHuntCategories?.join(',') || '',
+        y_combinator_categories: filters.yCombinatorCategories?.join(',') || '',
       };
 
       const response = await fetch(
@@ -91,6 +92,7 @@ export default function Home() {
           if (data.type === 'status') {
             setStatusMessages(prev => [...prev, data.message]);
           } else if (data.type === 'results') {
+            console.log(data);
             setItems(data.items);
             setIsLoading(false);
           }

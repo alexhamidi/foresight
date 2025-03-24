@@ -14,13 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState, useMemo } from 'react';
-
-const formatSourceName = (source: string): string => {
-  return source
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-};
+import MessageBox from './MessageBox';
+import { formatSourceName, getYCombinatorDate } from '@/utils/formatters';
 
 type SortOption = 'relevance' | 'recency';
 
@@ -119,7 +114,7 @@ export default function SearchResults({
                       </a>
                       {item.created_at && (
                         <span className="text-xs text-gray-500">
-                          {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                           {item.source !== 'y_combinator'? formatDistanceToNow(new Date(item.created_at), { addSuffix: true }) : getYCombinatorDate(item.created_at)}
                         </span>
                       )}
                     </div>
@@ -162,6 +157,12 @@ export default function SearchResults({
                         ) : (
                           <span className="text-sm text-gray-600">{item.author_name}</span>
                         )}
+                        <div className="" />
+                        <MessageBox
+                          title={item.title}
+                          authorName={item.author_name || ''}
+                          source={item.source}
+                        />
                       </div>
                     )}
                   </div>

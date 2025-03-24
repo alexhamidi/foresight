@@ -5,7 +5,7 @@ import { CheckCircle, Zap, Search, Globe } from "lucide-react";
 const features = [
   {
     icon: Globe,
-    label: "300,000+ Projects",
+    label: "10,000+ Projects",
   },
   {
     icon: Zap,

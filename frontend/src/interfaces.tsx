@@ -19,6 +19,7 @@ export interface SearchFilters {
     arxivCategories: string[] | null;
     redditCategories: string[] | null;
     productHuntCategories: string[] | null;
+    yCombinatorCategories: string[] | null;
 }
 
 
