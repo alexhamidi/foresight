@@ -117,7 +117,8 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
                   <Input
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
-                    placeholder="Search for projects..."
+                    disabled={process.env.NEXT_PUBLIC_SEARCH_DISABLED === 'true'}
+                    placeholder={process.env.NEXT_PUBLIC_SEARCH_DISABLED === 'true' ? "Backend is currently under maintenance... Check back tomorrow!" : "Search for projects..."}
                     className="pl-12 pr-24 py-6 text-lg bg-zinc-50 border-zinc-200 hover:border-zinc-300 focus:border-zinc-900 transition-colors"
                   />
 
@@ -125,7 +126,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
                 <Button
                   type="submit"
                   className="absolute right-2 top-1/2 -translate-y-1/2 bg-zinc-900 hover:bg-zinc-800 transition-colors px-6"
-                  disabled={!searchValue.trim() || selectedSources.length === 0 || isLoading}
+                  disabled={!searchValue.trim() || selectedSources.length === 0 || isLoading || process.env.NEXT_PUBLIC_SEARCH_DISABLED === 'true'}
                 >
                   {isLoading ? (
                     <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
