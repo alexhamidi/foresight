@@ -29,6 +29,13 @@ steps:
       - '0'
       - '--max-instances'
       - '10'
+      - '--port'
+      - '8080'
+      - '--timeout'
+      - '300'
+      - '--startup-cpu-boost'
+      - '--set-env-vars'
+      - 'PORT=8080'
 
 images:
   - 'gcr.io/$PROJECT_ID/foresight-backend'

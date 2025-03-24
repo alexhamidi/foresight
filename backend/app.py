@@ -195,9 +195,12 @@ def update_db_size():
 # =======================================================================#
 # RUN THE APPLICATION
 # =======================================================================#
+# Get port from environment variable with fallback
+port = int(os.getenv("PORT", "8002"))
+logger.info(f"Starting Foresight backend server on port {port}")
+
 if __name__ == "__main__":
-    logger.info("Starting Foresight backend server")
-    uvicorn.run("app:app", host="0.0.0.0", port=8002, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=True)
 
 
 

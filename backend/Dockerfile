@@ -3,8 +3,7 @@ FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8080
+    PYTHONDONTWRITEBYTECODE=1
 
 # Set working directory
 WORKDIR /app
@@ -23,5 +22,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the backend application
 COPY backend/ .
 
-# Run the application
-CMD exec uvicorn app:app --host 0.0.0.0 --port $PORT
+# Make port 8080 available to the world outside this container
+EXPOSE 8080
+
+# Run the application with explicit port configuration
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "${PORT:-8080}", "--workers", "1"]
