@@ -6,17 +6,34 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from dotenv import load_dotenv
 import os
+from utils.logger import setup_logger
 import logging
 from utils import embedding as emb, supabase as sup, arxiv, ai
 import time
 from fastapi.responses import StreamingResponse
 import json
 import asyncio
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
 # =======================================================================#
-# CONFIGURE THE APP AND CORS
+# CONFIGURE THE APP AND LOGGING
 # =======================================================================#
 
 load_dotenv()
+
+# Initialize Sentry
+sentry_sdk.init(
+    dsn=os.getenv('SENTRY_DSN'),
+    enable_tracing=True,
+    traces_sample_rate=1.0,
+    integrations=[
+        FastApiIntegration(
+            transaction_style="endpoint"
+        ),
+    ],
+)
+
+logger = setup_logger("app")
 
 # Define allowed origins
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://foresight-flax.vercel.app").split(",")
@@ -35,8 +52,8 @@ app = FastAPI()
 async def startup_event():
     global CURR_DB_SIZE
     CURR_DB_SIZE = sup.get_db_size()
-    logging.info(f"Initialized DB size: {CURR_DB_SIZE}")
-    logging.info(f"Allowed origins: {ALLOWED_ORIGINS}")
+    logger.info(f"Initialized DB size: {CURR_DB_SIZE}")
+    logger.info(f"Allowed origins: {ALLOWED_ORIGINS}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -73,7 +90,7 @@ def ysm(type: str, message: str | dict) -> str:
         json_str = json.dumps(message_data, ensure_ascii=False, default=str)
         return f"data: {json_str}\n\n"
     except Exception as e:
-        print(f"Error in ysm: {str(e)}")
+        logger.error(f"Error in ysm: {str(e)}")
         # Return a safe fallback message
         return f"data: {json.dumps({'type': 'error', 'message': 'Error formatting message'})}\n\n"
 
@@ -86,57 +103,64 @@ async def search(
     num_results: int = Query(...),
     arxiv_categories: str | None = Query(None),
     reddit_categories: str | None = Query(None),
-    product_hunt_categories: str | None = Query(None)
+    product_hunt_categories: str | None = Query(None),
+    ycombinator_categories: str | None = Query(None)
 ):
-    print("query: ", query)
-    print("valid_sources: ", valid_sources)
-    print("recency: ", recency)
-    print("num_results: ", num_results)
-    print("db size: ", CURR_DB_SIZE)
+    logger.info(f"Search request - Query: {query}, Sources: {valid_sources}, Recency: {recency}, Results: {num_results}")
+    logger.debug(f"Current DB size: {CURR_DB_SIZE}")
 
     arxiv_category_list = arxiv_categories.split(',') if arxiv_categories else []
     reddit_category_list = reddit_categories.split(',') if reddit_categories else []
     product_hunt_category_list = product_hunt_categories.split(',') if product_hunt_categories else []
+    y_combinator_category_list = ycombinator_categories.split(',') if ycombinator_categories else []
 
-    # Debug logging for categories
-    if arxiv_category_list:
-        print("arxiv categories: ", arxiv_category_list)
-    if reddit_category_list:
-        print("reddit categories: ", reddit_category_list)
-    if product_hunt_category_list:
-        print("product hunt categories: ", product_hunt_category_list)
+    # Log category filters if present
+    if any([arxiv_category_list, reddit_category_list, product_hunt_category_list, y_combinator_category_list]):
+        logger.info("Category filters applied - " +
+                   (f"arXiv: {arxiv_category_list}, " if arxiv_category_list else "") +
+                   (f"Reddit: {reddit_category_list}, " if reddit_category_list else "") +
+                   (f"Product Hunt: {product_hunt_category_list}, " if product_hunt_category_list else "") +
+                   (f"Y Combinator: {y_combinator_category_list}" if y_combinator_category_list else ""))
 
     async def event_generator():
         try:
             yield ysm("status", "Analyzing your search query...")
 
             ai_analysis = ai.analyze_query(query)
+            logger.debug(f"AI Analysis results - Problem Statement: {ai_analysis.get('problem_statement')}, Target Users: {ai_analysis.get('target_users')}")
+
             yield ysm("status", f"Problem Statement: {str(ai_analysis.get('problem_statement', ''))}")
             yield ysm("status", f"Target Users: {str(ai_analysis.get('target_users', ''))}")
+
+            enriched_query = f"Project: {query} Problem Statement: {ai_analysis.get('problem_statement', '')} Target Users: {ai_analysis.get('target_users', '')},"
 
             if ai_analysis.get('terms'):
                 yield ysm("status", f"Applying Filters: {', '.join(str(t) for t in ai_analysis['terms'])}")
 
             sources = valid_sources.split(",")
-            query_embedding = await emb.create_embedding(query)
+            query_embedding = await emb.create_embedding(enriched_query)
             items = []
+
+            yield ysm("status", f"Searching in a database of {CURR_DB_SIZE} items")
+            logger.info(f"Starting search across sources: {sources}")
 
             if set(sources) - {"arxiv"}:
                 items = sup.get_items(sources, query_embedding, num_results, recency,
-                                reddit_category_list, product_hunt_category_list)
+                                reddit_category_list, product_hunt_category_list, y_combinator_category_list)
+                logger.debug(f"Retrieved {len(items)} items from Supabase sources")
 
             if "arxiv" in sources:
                 arxiv_items = await arxiv.get_arxiv_items(query, query_embedding,
                                                         arxiv_category_list, num_results, recency)
                 items.extend(arxiv_items)
+                logger.debug(f"Retrieved {len(arxiv_items)} items from arXiv")
 
             yield ysm("status", f"Found {len(items)} matching results")
+            logger.info(f"Search completed - Found {len(items)} total results")
 
-            # Sort and clean results
             items.sort(key=lambda x: x['similarity'], reverse=True)
             results = items[:num_results]
 
-            # Clean the results for JSON serialization
             cleaned_results = []
             for item in results:
                 cleaned_item = {}
@@ -148,9 +172,11 @@ async def search(
                 cleaned_results.append(cleaned_item)
 
             yield ysm("results", cleaned_results)
+            logger.info(f"Successfully sent {len(cleaned_results)} results to client")
 
         except Exception as e:
-            logging.error(f"Search error: {str(e)}")
+            error_msg = f"Search error: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             yield ysm("error", str(e))
 
     return StreamingResponse(
@@ -162,12 +188,13 @@ async def search(
 def update_db_size():
     global CURR_DB_SIZE
     CURR_DB_SIZE = sup.get_db_size()
-    logging.info(f"Updated DB size: {CURR_DB_SIZE}")
+    logger.info(f"Updated DB size: {CURR_DB_SIZE}")
 
 # =======================================================================#
 # RUN THE APPLICATION
 # =======================================================================#
 if __name__ == "__main__":
+    logger.info("Starting Foresight backend server")
     uvicorn.run("app:app", host="0.0.0.0", port=8002, reload=True)
 
 

@@ -2,12 +2,13 @@ import os
 from openai import OpenAI
 from typing import Dict
 import json
-# Initialize OpenAI client
+from utils.logger import setup_logger
+
+# Initialize OpenAI client and logger
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+logger = setup_logger("ai")
 
 def analyze_query(query: str) -> Dict[str, str]:
-
-
     system_prompt = """You are a product analyst who helps identify core problems from product ideas.
     Extract the fundamental problem or pain point that the product/idea is trying to solve.
     Focus on the underlying user need rather than the solution. Your response should be extremely concise, around 8-12 words."""
@@ -25,6 +26,7 @@ def analyze_query(query: str) -> Dict[str, str]:
     """
 
     try:
+        logger.debug(f"Analyzing query: {query}")
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -36,11 +38,13 @@ def analyze_query(query: str) -> Dict[str, str]:
 
         content = response.choices[0].message.content
         json_content = json.loads(content)
-        print("json_content: ", json_content)
+        logger.debug(f"AI analysis results: {json_content}")
         return json_content
 
     except Exception as e:
+        error_msg = f"Failed to analyze query: {str(e)}"
+        logger.error(error_msg, exc_info=True)
         return {
-            "error": f"Failed to analyze query: {str(e)}",
+            "error": error_msg,
             "original_query": query
         }

@@ -20,7 +20,7 @@ async def create_embedding(text: str) -> np.ndarray:
 async def get_item_embeddings(items: List[Dict[str, Any]]) -> np.ndarray:
     tasks = []
     for item in items:
-        text = f"{item['title']} {item['description']}"
+        text = f"{item['title']} {item['description']} {', '.join(item.get('categories', []))}"
         tasks.append(create_embedding(text))
 
     embeddings = await asyncio.gather(*tasks)

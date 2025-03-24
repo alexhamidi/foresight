@@ -12,3 +12,4 @@ asyncpraw
 beautifulsoup4
 playwright
 g
+sentry-sdk==1.40.6

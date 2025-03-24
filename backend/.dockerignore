@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.env
+
+# Development
+.git
+.gitignore
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific
+data/
+legacy/
+.ruff_cache/
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Tests
+tests/
+test_*.py

@@ -24,8 +24,8 @@ asyncio.run(init_supabase())
 
 
 def get_db_size():
-    response = supabase.table('items').select('*').execute()
-    return len(response.data)
+    response = supabase.rpc('get_db_size').execute()
+    return response.data
 
 
 async def add_items(items: List[dict[str, Any]], embeddings: np.ndarray) -> None:
@@ -43,7 +43,7 @@ async def add_items(items: List[dict[str, Any]], embeddings: np.ndarray) -> None
                 'created_at': item['created_at'],
                 'author_name': item.get('author_name', ''),
                 'author_profile_url': item.get('author_profile_url', ''),
-                'categories': item.get('categories', ''),
+                'categories': item.get('categories', []),
             },
             on_conflict='title',  # Specify the column that has the unique constraint
             count='exact'  # This will return the number of affected rows
@@ -70,46 +70,27 @@ async def add_items(items: List[dict[str, Any]], embeddings: np.ndarray) -> None
 
 
 
-def get_items(sources: List[str], embedding: np.ndarray, num_results: int, recency: int, reddit_category_list: List[str], product_hunt_category_list: List[str]) -> List[dict[str, Any]]:
+def get_items(sources: List[str], embedding: np.ndarray, num_results: int, recency: int, reddit_category_list: List[str], product_hunt_category_list: List[str], y_combinator_category_list: List[str]) -> List[dict[str, Any]]:
     try:
         # Verify embedding is not null and has correct dimensions
         if embedding is None or len(embedding) == 0:
             raise ValueError("Empty embedding vector")
 
-        # Call the PostgreSQL function using RPC
-        response = supabase.rpc('get_items', {
+        payload =  {
             'embedding_param': embedding.tolist(),
             'sources': sources,
             'reddit_category_list': reddit_category_list,
             'product_hunt_category_list': product_hunt_category_list,
+            'y_combinator_category_list': y_combinator_category_list,
             'num_results': num_results,
             'recency': recency
-        }).execute()
+        }
 
-        # If we got data from RPC, return it
-        if response.data:
-            return response.data
+        # print("payload: ", payload)
 
-        # If no data from RPC, check if items exist
-        check_data = supabase.table('items').select('*').in_('source', sources).limit(num_results).execute()
-        print(f"Data check response: {check_data.data}")
+        response = supabase.rpc('get_items', payload).execute()
+        return response.data
 
-        if check_data.data:
-            # Calculate similarities for the items we found
-            for item in check_data.data:
-                if item.get('embedding') and isinstance(item['embedding'], list):
-                    item_embedding = np.array(item['embedding'])
-                    # Calculate cosine similarity
-                    similarity = 1 - np.dot(embedding, item_embedding) / (np.linalg.norm(embedding) * np.linalg.norm(item_embedding))
-                    item['similarity'] = float(similarity)
-                else:
-                    item['similarity'] = 0.0
-
-            # Sort by similarity
-            check_data.data.sort(key=lambda x: x['similarity'], reverse=True)
-            return check_data.data
-
-        return []
     except Exception as e:
         logging.error(f"Error performing vector search: {str(e)}")
         raise
@@ -118,14 +99,3 @@ def get_items(sources: List[str], embedding: np.ndarray, num_results: int, recen
 
 
 
-
-"""get_items:
-CREATE or replace FUNCTION get_items(embedding_param vector, sources text[])
-RETURNS SETOF items AS $$
-    SELECT *
-    FROM items
-    WHERE source = ANY(sources)
-    ORDER BY embedding <=> embedding_param
-    LIMIT 25;
-$$ LANGUAGE SQL;
-"""

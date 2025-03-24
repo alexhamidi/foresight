@@ -132,7 +132,7 @@ async def get_reddit_posts(subreddit: str, limit: int = 200) -> List[Dict]:
             'author_name': submission.author.name,
             'author_profile_url': f"https://reddit.com/u/{submission.author.name}",
             'created_at': datetime.fromtimestamp(submission.created_utc).isoformat(),
-            'categories': 'r/' + subreddit
+            'categories': [f'r/{subreddit}']
         }
         posts.append(post)
 

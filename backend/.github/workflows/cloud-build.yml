@@ -1,0 +1,33 @@
+name: Cloud Build CI/CD
+
+on:
+  push:
+    branches:
+      - main  # or your default branch
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    name: Cloud Build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Google Auth
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Submit to Cloud Build
+      run: |
+        gcloud builds submit --config cloudbuild.yaml
+      env:
+        PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}

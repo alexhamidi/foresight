@@ -15,7 +15,7 @@ async def fetch_additional_details(page, product_url: str) -> Dict:
         html = await page.content()
 
         soup = BeautifulSoup(html, 'html.parser')
-        result = {'author_name': None, 'author_profile_url': None, 'categories': []}
+        result = {'author_name': None, 'author_profile_url': None, 'categories': [], 'description': None}
 
         # Get author details
         team_section = soup.find('section', attrs={'data-sentry-component': 'Team'})
@@ -44,14 +44,21 @@ async def fetch_additional_details(page, product_url: str) -> Dict:
                 category_links = tag_list.find_all('a', {'class': lambda x: x and 'text-16' in x})
                 result['categories'] = [link.get_text(strip=True) for link in category_links]
 
+        # Get long description
+        description_section = soup.find('section', {'class': 'flex flex-col gap-2'})
+        if description_section:
+            description_div = description_section.find('div', {'class': 'text-16 text-secondary'})
+            if description_div:
+                result['description'] = description_div.get_text(strip=True)
+
         return result
     except Exception as e:
         logging.error(f"Error fetching additional details for {product_url}: {e}")
-        return {'author_name': None, 'author_profile_url': None, 'categories': []}
+        return {'author_name': None, 'author_profile_url': None, 'categories': [], 'description': None}
 
 async def scrape_product_hunt_monthly(year: int, month: int, num_scrolls: int = 5) -> List[Dict]:
     try:
-        url = f"https://www.producthunt.com/leaderboard/monthly/{year}/{month}"
+        url = f"https://www.producthunt.com/leaderboard/monthly/{year}/{month}/all"
 
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -81,7 +88,6 @@ async def scrape_product_hunt_monthly(year: int, month: int, num_scrolls: int = 
                     title = title_link.get_text(strip=True).rstrip()
                     link = 'https://www.producthunt.com' + title_link['href']
 
-                    description = section.find('a', {'class': 'text-secondary'}).get_text(strip=True)
                     img_tag = section.find('img')
                     image_url = img_tag['src'] if img_tag else None
 
@@ -95,9 +101,12 @@ async def scrape_product_hunt_monthly(year: int, month: int, num_scrolls: int = 
                     date_element = section.find('span', attrs={'data-test': lambda x: x and x.startswith('post-date-')})
                     created_at = date_element.get('datetime') if date_element else datetime.now().isoformat()
 
+                    # Get short description as fallback if long description is not available
+                    short_description = section.find('a', {'class': 'text-secondary'}).get_text(strip=True)
+
                     product = {
                         "title": title,
-                        "description": description,
+                        "description": additional_details['description'] or short_description,  # Use long description if available, otherwise use short
                         "link": link,
                         "source": "product_hunt",
                         "source_link": url,

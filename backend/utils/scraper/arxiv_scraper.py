@@ -4,11 +4,14 @@ import asyncio
 from functools import lru_cache
 import time
 from datetime import datetime, timedelta
+from utils.logger import setup_logger
 
+logger = setup_logger("arxiv_scraper")
 ARXIV_IMAGE_URL = "https://library.stlawu.edu/sites/default/files/2020-07/arxiv-logo.png"
 
 @lru_cache(maxsize=1)
 def get_arxiv_client():
+    logger.debug("Creating new arXiv client")
     return arxiv.Client(
         page_size=100,
         delay_seconds=3,
@@ -24,13 +27,16 @@ async def search_papers(nouns: List[str],  arxiv_category_list: List[str],num_re
         # Optimize query construction
         noun_query = ' AND '.join(f'abs:"{noun.lower()}"' for noun in nouns if len(noun) > 2)
         if not noun_query:
+            logger.debug("No valid nouns provided for arXiv search")
             return []
 
         search_query = f'cat:cs.* AND ({noun_query})'
 
         if arxiv_category_list:
             search_query = f'cat:cs.* AND ({noun_query}) AND cat:{" OR ".join(arxiv_category_list)}'
+            logger.debug(f"Searching arXiv with categories: {arxiv_category_list}")
 
+        logger.info(f"Executing arXiv search with query: {search_query}")
         client = get_arxiv_client()
         search = arxiv.Search(
             query=search_query,
@@ -41,10 +47,12 @@ async def search_papers(nouns: List[str],  arxiv_category_list: List[str],num_re
 
         loop = asyncio.get_event_loop()
         results = await loop.run_in_executor(None, lambda: list(client.results(search)))
+        logger.debug(f"Retrieved {len(results)} initial results from arXiv")
 
         # Filter results by recency - convert to naive datetime for comparison
         cutoff_date = datetime.now() - timedelta(days=recency)
         results = [paper for paper in results if paper.published.replace(tzinfo=None) >= cutoff_date]
+        logger.debug(f"Filtered to {len(results)} results within {recency} days")
 
         papers = [
             {
@@ -61,8 +69,9 @@ async def search_papers(nouns: List[str],  arxiv_category_list: List[str],num_re
             for paper in results
         ]
 
+        logger.info(f"Successfully processed {len(papers)} arXiv papers")
         return papers
 
     except Exception as e:
-        print(f"Error searching arXiv: {str(e)}")
+        logger.error(f"Error searching arXiv: {str(e)}", exc_info=True)
         return []
