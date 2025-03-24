@@ -14,24 +14,21 @@ from fastapi.responses import StreamingResponse
 import json
 import asyncio
 import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
+
 # =======================================================================#
 # CONFIGURE THE APP AND LOGGING
 # =======================================================================#
 
 load_dotenv()
 
-# Initialize Sentry
+
 sentry_sdk.init(
     dsn=os.getenv('SENTRY_DSN'),
-    enable_tracing=True,
-    traces_sample_rate=1.0,
-    integrations=[
-        FastApiIntegration(
-            transaction_style="endpoint"
-        ),
-    ],
+    # Add data like request headers and IP for users,
+    # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
+    send_default_pii=True,
 )
+
 
 logger = setup_logger("app")
 
@@ -66,6 +63,11 @@ app.add_middleware(
 # =======================================================================#
 # API ENDPOINTS
 # =======================================================================#
+
+@app.get("/sentry-debug")
+async def trigger_error():
+    division_by_zero = 1 / 0
+
 @app.get("/api/health")
 def health_check():
     return {"status": "healthy", "message": "API is running", "status_code": 200}
