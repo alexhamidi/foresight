@@ -196,7 +196,7 @@ def update_db_size():
 # RUN THE APPLICATION
 # =======================================================================#
 # Get port from environment variable with fallback
-port = int(os.getenv("PORT", "8002"))
+port = 8080
 logger.info(f"Starting Foresight backend server on port {port}")
 
 if __name__ == "__main__":
