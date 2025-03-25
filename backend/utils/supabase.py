@@ -15,12 +15,16 @@ supabase_key = os.getenv("SUPABASE_KEY")
 if not supabase_url or not supabase_key:
     raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables")
 
+# Initialize as None first
+asupabase = None
+supabase = None
+
 async def init_supabase():
     global asupabase, supabase
-    asupabase = await acreate_client(supabase_url, supabase_key)
-    supabase = create_client(supabase_url, supabase_key)  # This one is not async
-
-asyncio.run(init_supabase())
+    if asupabase is None:
+        asupabase = await acreate_client(supabase_url, supabase_key)
+        supabase = create_client(supabase_url, supabase_key)  # This one is not async
+    return asupabase, supabase
 
 
 def get_db_size():

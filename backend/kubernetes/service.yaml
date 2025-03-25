@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: foresight-backend-svc
+  labels:
+    app: foresight-backend
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'  # For GCP native load balancing
+    cloud.google.com/backend-config: '{"default": "foresight-backend-config"}'
+spec:
+  type: ClusterIP  # Internal service - will be exposed via Ingress
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: foresight-backend

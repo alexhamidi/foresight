@@ -48,6 +48,8 @@ app = FastAPI()
 @app.on_event("startup")
 async def startup_event():
     global CURR_DB_SIZE
+    # Initialize Supabase first
+    await sup.init_supabase()
     CURR_DB_SIZE = sup.get_db_size()
     logger.info(f"Initialized DB size: {CURR_DB_SIZE}")
     logger.info(f"Allowed origins: {ALLOWED_ORIGINS}")
@@ -195,12 +197,9 @@ def update_db_size():
 # =======================================================================#
 # RUN THE APPLICATION
 # =======================================================================#
-# Get port from environment variable with fallback
-port = int(os.getenv("PORT", 8080))
-logger.info(f"Starting Foresight backend server on port {port}")
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=8080, reload=True)
 
 
 

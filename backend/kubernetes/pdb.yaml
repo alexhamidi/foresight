@@ -1,0 +1,9 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: foresight-backend-pdb
+spec:
+  minAvailable: 2  # Always keep at least 2 pods available
+  selector:
+    matchLabels:
+      app: foresight-backend

@@ -9,19 +9,18 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 logger = setup_logger("ai")
 
 def analyze_query(query: str) -> Dict[str, str]:
-    system_prompt = """You are a product analyst who helps identify core problems from product ideas.
-    Extract the fundamental problem or pain point that the product/idea is trying to solve.
-    Focus on the underlying user need rather than the solution. Your response should be extremely concise, around 8-12 words."""
+    system_prompt = """You are a product analyst who helps identify core information from product ideas.
+    Extract the vital information from the prompt. Your response should be extremely concise, around 8-12 words."""
 
     user_prompt = f"""
-    Please analyze this product/project idea and extract the core problem statement:
+    Please analyze this product/project idea and extract the core problem statement.:
     {query}
 
     Respond in this JSON format:
     {{
         "problem_statement": "The core problem being solved",
         "target_users": "Who experiences this problem",
-        "terms": "list of relevant terms to the problem"
+        "terms": "list of relevant terms to the problem. Focus on the niche aspects/specific aspects - for example, given a prompt like \"AI music composition tool\", focus more on the music aspects than the \"tool\" aspects.
     }}
     """
 

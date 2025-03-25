@@ -1,29 +1,36 @@
-# Python
+# Python bytecode
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
+
+# Virtual environment
 venv/
+env/
+ENV/
+
+# Development files
 .env
-
-# Development
-.git
-.gitignore
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Project specific
-data/
-legacy/
 .ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Docker
+# Git related
+.git/
+.gitignore
+.github/
+
+# Docker related
 Dockerfile
 .dockerignore
 
-# Tests
-tests/
-test_*.py
+# Local data
+data/
+*.db
+
+# Editor directories
+.idea/
+.vscode/
+
+# Log files
+*.log
