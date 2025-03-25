@@ -79,6 +79,25 @@ def get_frontend_url():
     return {"frontend_urls": FRONTEND_URL}
 
 
+
+
+@app.post("/api/feedback")
+async def post_feedback(feedback: dict):
+    try:
+        name = feedback.get("name", "")
+        email = feedback.get("email", "")
+        message = feedback.get("message", "")
+
+        if not message:
+            raise HTTPException(status_code=400, detail="Message is required")
+
+        await sup.post_feedback(message=message, name=name, email=email)
+        return {"status": "success", "message": "Feedback received"}
+    except Exception as e:
+        logger.error(f"Error posting feedback: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 def ysm(type: str, message: str | dict) -> str:
     """Helper function to yield SSE messages in the correct format"""
     try:

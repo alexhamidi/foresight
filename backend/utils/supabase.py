@@ -5,6 +5,7 @@ import logging
 from dotenv import load_dotenv
 import asyncio
 import numpy as np
+from datetime import datetime
 
 load_dotenv()
 
@@ -97,6 +98,20 @@ def get_items(sources: List[str], embedding: np.ndarray, num_results: int, recen
 
     except Exception as e:
         logging.error(f"Error performing vector search: {str(e)}")
+        raise
+
+
+async def post_feedback(message: str, name: str = "", email: str = "") -> None:
+    """Store user feedback in the feedback table"""
+    try:
+        await asupabase.table('feedback').insert({
+            'message': message,
+            'name': name,
+            'email': email,
+        }).execute()
+        logging.info(f"Successfully stored feedback from {name if name else 'anonymous'}")
+    except Exception as e:
+        logging.error(f"Error storing feedback: {str(e)}")
         raise
 
 

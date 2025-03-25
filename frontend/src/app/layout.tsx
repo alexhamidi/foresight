@@ -5,6 +5,7 @@ import { Header } from '@/components/Header';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Toaster } from "@/components/ui/toaster"
 import { Analytics } from '@vercel/analytics/react';
+import { FeedbackButton } from '@/components/FeedbackButton';
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -27,6 +28,7 @@ export default function RootLayout({
         <body className={`${inter.variable} font-sans bg-white`} data-ailoaded="true">
           <Header />
           {children}
+          <FeedbackButton />
           <Toaster />
           <Analytics />
         </body>
