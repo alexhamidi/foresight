@@ -6,6 +6,7 @@ import asyncio
 from asyncio import Semaphore
 from datetime import datetime
 
+PRODUCT_HUNT_IMAGE_URL = "https://cdn.freebiesupply.com/logos/large/2x/product-hunt-logo-png-transparent.png"
 
 async def fetch_additional_details(page, product_url: str) -> Dict:
     """Fetch additional details (author and categories) from a product's page"""
@@ -86,6 +87,7 @@ async def scrape_product_hunt_monthly(year: int, month: int, num_scrolls: int = 
                 try:
                     title_link = section.find('a', attrs={'data-test': lambda x: x and x.startswith('post-name-')})
                     title = title_link.get_text(strip=True).rstrip()
+                    logging.info(f"Processing {title}")
                     link = 'https://www.producthunt.com' + title_link['href']
 
                     img_tag = section.find('img')
@@ -110,7 +112,7 @@ async def scrape_product_hunt_monthly(year: int, month: int, num_scrolls: int = 
                         "link": link,
                         "source": "product_hunt",
                         "source_link": url,
-                        "image_url": image_url,
+                        "image_url": image_url or PRODUCT_HUNT_IMAGE_URL,
                         "author_name": additional_details['author_name'],
                         "author_profile_url": additional_details['author_profile_url'],
                         "categories": additional_details['categories'],

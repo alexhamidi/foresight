@@ -91,15 +91,17 @@ export default function SearchResults({
             <CardContent className="p-6">
               <div className="flex justify-between items-start gap-4">
                 <div className="flex gap-4 flex-1 min-w-0">
-                  {item.image_url && (
+                  {(item.image_url && item.image_url !== "None") || item.source === "product_hunt" ? (
                     <div className="flex-shrink-0">
                       <img
-                        src={item.image_url}
+                        src={item.source === "product_hunt" && (!item.image_url || item.image_url === "None")
+                          ? "https://cdn.freebiesupply.com/logos/large/2x/product-hunt-logo-png-transparent.png"
+                          : item.image_url}
                         alt={item.title}
                         className="w-12 h-12 object-cover rounded-md bg-gray-50"
                       />
                     </div>
-                  )}
+                  ) : null}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <a
@@ -142,7 +144,7 @@ export default function SearchResults({
                         </button>
                       )}
                     </div>
-                    {item.author_name && (
+                    {item.author_name && item.author_name !== 'None' && (
                       <div className="flex items-center gap-2 mt-2 mb-1">
                         <User className="w-3 h-3 text-gray-400" />
                         {item.author_profile_url ? (

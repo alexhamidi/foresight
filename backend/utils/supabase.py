@@ -16,9 +16,12 @@ supabase_key = os.getenv("SUPABASE_KEY")
 if not supabase_url or not supabase_key:
     raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables")
 
-# Initialize as None first
-asupabase = None
-supabase = None
+async def init_supabase():
+    global asupabase, supabase
+    asupabase = await acreate_client(supabase_url, supabase_key)
+    supabase = create_client(supabase_url, supabase_key)  # This one is not async
+
+asyncio.run(init_supabase())
 
 async def init_supabase():
     global asupabase, supabase
@@ -28,20 +31,15 @@ async def init_supabase():
     return asupabase, supabase
 
 
-def get_db_size():
-    response = supabase.rpc('get_db_size').execute()
-    return response.data
 
 
-async def add_items(items: List[dict[str, Any]], embeddings: np.ndarray) -> None:
+async def add_items(items: List[dict[str, Any]], embeddings: np.ndarray, table) -> None:
     try:
-        # Create list of coroutines for parallel execution
         tasks = [
-            asupabase.table('items').upsert({
+            asupabase.table(table).upsert({
                 'title': item['title'],
                 'description': item['description'],
                 'link': item['link'],
-                'source': item['source'],
                 'source_link': item['source_link'],
                 'embedding': embeddings[i].tolist(),
                 'image_url': item['image_url'],
@@ -50,13 +48,12 @@ async def add_items(items: List[dict[str, Any]], embeddings: np.ndarray) -> None
                 'author_profile_url': item.get('author_profile_url', ''),
                 'categories': item.get('categories', []),
             },
-            on_conflict='title',  # Specify the column that has the unique constraint
-            count='exact'  # This will return the number of affected rows
+            on_conflict='title',
+            count='exact'
             ).execute()
             for i, item in enumerate(items)
         ]
 
-        # Execute all inserts in parallel
         results = await asyncio.gather(*tasks)
 
         # Check results
@@ -65,8 +62,7 @@ async def add_items(items: List[dict[str, Any]], embeddings: np.ndarray) -> None
                 raise Exception(f"Error inserting item: {result.error}")
 
         # After successful insertion, update the DB size in the app
-        from app import update_db_size
-        update_db_size()
+
 
     except Exception as e:
         logging.error(f"Error adding items to Supabase: {str(e)}")
@@ -74,27 +70,59 @@ async def add_items(items: List[dict[str, Any]], embeddings: np.ndarray) -> None
 
 
 
-
-def get_items(sources: List[str], embedding: np.ndarray, num_results: int, recency: int, reddit_category_list: List[str], product_hunt_category_list: List[str], y_combinator_category_list: List[str]) -> List[dict[str, Any]]:
+async def fetch_items_from_source(source: str, embedding: np.ndarray, num_results: int, recency: int, category_list: List[str]) -> List[dict[str, Any]]:
     try:
-        # Verify embedding is not null and has correct dimensions
-        if embedding is None or len(embedding) == 0:
-            raise ValueError("Empty embedding vector")
-
-        payload =  {
+        payload = {
+            'source_param': source,
             'embedding_param': embedding.tolist(),
-            'sources': sources,
-            'reddit_category_list': reddit_category_list,
-            'product_hunt_category_list': product_hunt_category_list,
-            'y_combinator_category_list': y_combinator_category_list,
+            'category_list': category_list,
             'num_results': num_results,
             'recency': recency
         }
-
-        # print("payload: ", payload)
-
-        response = supabase.rpc('get_items', payload).execute()
+        # Async RPC call using asupabase
+        response = await asupabase.rpc('get_items_by_source', payload).execute()
         return response.data
+    except Exception as e:
+        logging.error(f"Error fetching from {source}: {str(e)}")
+        return []
+
+async def get_items(sources: List[str], embedding: np.ndarray, num_results: int, recency: int, reddit_category_list: List[str], product_hunt_category_list: List[str], y_combinator_category_list: List[str]) -> List[dict[str, Any]]:
+    try:
+        if embedding is None or len(embedding) == 0:
+            raise ValueError("Empty embedding vector")
+
+        # Map sources to their category lists
+        category_map = {
+            'y_combinator': y_combinator_category_list,
+            'hacker_news': None,  # No category filter for HN
+            'reddit': reddit_category_list,
+            'product_hunt': product_hunt_category_list
+        }
+
+        # Create a list of async tasks for each source
+        tasks = [
+            fetch_items_from_source(
+                source=source,
+                embedding=embedding,
+                num_results=num_results,
+                recency=recency,
+                category_list=category_map.get(source)
+            )
+            for source in sources if source in category_map
+        ]
+
+        # Run all tasks concurrently and gather results
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Flatten the results into a single list
+        combined_results = []
+        for result in results:
+            if isinstance(result, list):  # Check if result is valid data
+                combined_results.extend(result)
+            else:
+                logging.warning(f"Task returned an error: {result}")
+
+        return combined_results
 
     except Exception as e:
         logging.error(f"Error performing vector search: {str(e)}")

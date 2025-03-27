@@ -38,21 +38,21 @@ ALLOWED_ORIGINS = [
     "https://foresight-flax.vercel.app",
     "http://localhost:3002",  # For local development
 ]
-CURR_DB_SIZE = 0
+CURR_DB_SIZE = 5680 + 3000
 
 if not FRONTEND_URL:
     raise ValueError("FRONTEND_URL not configured in environment variables")
 
 app = FastAPI()
 
-@app.on_event("startup")
-async def startup_event():
-    global CURR_DB_SIZE
-    # Initialize Supabase first
-    await sup.init_supabase()
-    CURR_DB_SIZE = sup.get_db_size()
-    logger.info(f"Initialized DB size: {CURR_DB_SIZE}")
-    logger.info(f"Allowed origins: {ALLOWED_ORIGINS}")
+# @app.on_event("startup")
+# async def startup_event():
+#     global CURR_DB_SIZE
+#     # Initialize Supabase first
+#     await sup.init_supabase()
+#     CURR_DB_SIZE = sup.get_db_size()
+#     logger.info(f"Initialized DB size: {CURR_DB_SIZE}")
+#     logger.info(f"Allowed origins: {ALLOWED_ORIGINS}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -155,7 +155,8 @@ async def search(
             yield ysm("status", f"Problem Statement: {str(ai_analysis.get('problem_statement', ''))}")
             yield ysm("status", f"Target Users: {str(ai_analysis.get('target_users', ''))}")
 
-            enriched_query = f"Project: {query} Problem Statement: {ai_analysis.get('problem_statement', '')} Target Users: {ai_analysis.get('target_users', '')},"
+            enriched_query = f"{query} {ai_analysis.get('problem_statement', '')} {ai_analysis.get('target_users', '')} {', '.join(str(t) for t in ai_analysis.get('terms', []))}"
+            # enriched_query = f"I created a {query}"
 
             if ai_analysis.get('terms'):
                 yield ysm("status", f"Applying Filters: {', '.join(str(t) for t in ai_analysis['terms'])}")
@@ -167,8 +168,9 @@ async def search(
             yield ysm("status", f"Searching in a database of {CURR_DB_SIZE} items")
             logger.info(f"Starting search across sources: {sources}")
 
+
             if set(sources) - {"arxiv"}:
-                items = sup.get_items(sources, query_embedding, num_results, recency,
+                items = await sup.get_items(sources, query_embedding, num_results, recency,
                                 reddit_category_list, product_hunt_category_list, y_combinator_category_list)
                 logger.debug(f"Retrieved {len(items)} items from Supabase sources")
 
@@ -178,11 +180,16 @@ async def search(
                 items.extend(arxiv_items)
                 logger.debug(f"Retrieved {len(arxiv_items)} items from arXiv")
 
+            print(json.dumps(items, indent=2))
             yield ysm("status", f"Found {len(items)} matching results")
             logger.info(f"Search completed - Found {len(items)} total results")
 
+            # Filter by similarity threshold
+            items = [item for item in items if item['similarity'] >= 0.35]
+
             items.sort(key=lambda x: x['similarity'], reverse=True)
             results = items[:num_results]
+            yield ysm("status", f"Filtered to {len(results)} best results")
 
             cleaned_results = []
             for item in results:
@@ -207,11 +214,6 @@ async def search(
         media_type="text/event-stream"
     )
 
-# Update the DB size after adding items
-def update_db_size():
-    global CURR_DB_SIZE
-    CURR_DB_SIZE = sup.get_db_size()
-    logger.info(f"Updated DB size: {CURR_DB_SIZE}")
 
 # =======================================================================#
 # RUN THE APPLICATION

@@ -10,10 +10,7 @@ const suggestions = [
   "Project to generate 3D logos",
   "AI-powered video editing tool",
   "Real-time language translation app",
-  "Autonomous drone delivery system",
-  "Smart home automation platform",
   "Blockchain-based voting system",
-  "AR navigation assistant",
   "AI music composition tool",
   "Sustainable energy monitoring"
 ];

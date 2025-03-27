@@ -88,11 +88,10 @@ export default function Home() {
         try {
           const jsonStr = buffer.slice(5).trim();
           const data = JSON.parse(jsonStr);
-
+          console.log(data)
           if (data.type === 'status') {
             setStatusMessages(prev => [...prev, data.message]);
           } else if (data.type === 'results') {
-            console.log(data);
             setItems(data.items);
             setIsLoading(false);
           }
@@ -120,6 +119,19 @@ export default function Home() {
       <div className="relative z-10 min-h-screen overflow-y-auto">
         <div className="max-w-5xl mx-auto px-4 py-12">
           <div className="text-center mb-12">
+
+            <div className="inline-flex items-center mb-8 group py-1 pl-1 pr-2 border border-gray-200 rounded-xl bg-white shadow-sm">
+
+                  <div className="flex items-center text-sm py-1 px-2 border border-gray-200 rounded-lg bg-white">
+                    <div className="w-2 h-2 rounded-full bg-green-200 flex justify-center items-center"><div className="w-1 h-1 rounded-full bg-green-600"></div></div>
+                    <span className="ml-2 text-slate-500">What's New (3/26) </span>
+                  </div>
+                  <span className="px-2 text-sm">
+                    3000+ projects added across all categories
+                  </span>
+            </div>
+
+
             <h1 className="text-5xl font-bold pb-1">Foresight</h1>
             <p className="text-lg text-gray-600 mb-8">Search for projects, everywhere.</p>
             <FeatureBadges />

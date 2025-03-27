@@ -15,6 +15,7 @@ export function Header() {
 
   return (
     <header className="flex items-center gap-4 w-full justify-end px-6 py-4 ">
+      {/* <span>For All | For Hackers | For Business</span> */}
       {process.env.NODE_ENV === 'development' && <>
         {isLoaded && (
 
@@ -28,7 +29,7 @@ export function Header() {
               />
             </div>
             : (
-              <>
+              <div>
                 <Link
                   href="/sign-up"
                   className="px-2 py-1 text-xs rounded-full bg-zinc-200/50 z-50 transition-colors"
@@ -41,7 +42,7 @@ export function Header() {
                             >
                       Sign In
                       </Link>
-              </>
+              </div>
             )
           )}
         </>}
