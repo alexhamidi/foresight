@@ -6,13 +6,13 @@ interface SearchSuggestionsProps {
 }
 
 const suggestions = [
-  "Bolt.new for deep learning",
-  "Project to generate 3D logos",
+  "Automated framework for deep learning",
+  "AI-powered platform for categorizing and prioritizing user feedback",
+  "Project to generate 3D logos from 2d SVG",
   "AI-powered video editing tool",
   "Real-time language translation app",
-  "Blockchain-based voting system",
-  "AI music composition tool",
-  "Sustainable energy monitoring"
+  "Music composition and Production with AI",
+  "Personalized email marketing optimization tool"
 ];
 
 const AUTO_ROTATE_INTERVAL = 2000;
