@@ -43,6 +43,7 @@ ALLOWED_ORIGINS = [
     "http://localhost:3002",  # For local development
 ]
 CURR_DB_SIZE = 0
+SIMILARITY_THRESHOLD = 0.3
 
 if not FRONTEND_URL:
     raise ValueError("FRONTEND_URL not configured in environment variables")
@@ -235,7 +236,7 @@ async def search(
             logger.info(f"Search completed - Found {len(items)} total results")
 
             # Filter by similarity threshold
-            items = [item for item in items if item['similarity'] >= 0.35]
+            items = [item for item in items if item['similarity'] >= SIMILARITY_THRESHOLD]
 
             items.sort(key=lambda x: x['similarity'], reverse=True)
             results = items[:num_results]
