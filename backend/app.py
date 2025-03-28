@@ -15,6 +15,8 @@ import json
 import asyncio
 import sentry_sdk
 from contextlib import asynccontextmanager
+import schedule
+from scripts.daily_update import update_task
 
 # =======================================================================#
 # CONFIGURE THE APP AND LOGGING
@@ -22,6 +24,8 @@ from contextlib import asynccontextmanager
 
 load_dotenv()
 
+# Global variable to store the scheduler task
+scheduler_task = None
 
 sentry_sdk.init(
     dsn=os.getenv('SENTRY_DSN'),
@@ -29,7 +33,6 @@ sentry_sdk.init(
     # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
     send_default_pii=True,
 )
-
 
 logger = setup_logger("app")
 
@@ -46,11 +49,32 @@ if not FRONTEND_URL:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global CURR_DB_SIZE
+    global CURR_DB_SIZE, scheduler_task
     await sup.init_supabase()
     CURR_DB_SIZE = await sup.get_db_size()
     logger.info(f"Initialized DB size: {CURR_DB_SIZE}")
+
+    # Start the scheduler in a background task
+    async def run_scheduler():
+        while True:
+            schedule.run_pending()
+            await asyncio.sleep(60)  # Check every minute
+
+    # Schedule the daily update task
+    schedule.every().day.at("23:50").do(lambda: asyncio.create_task(update_task()))
+    scheduler_task = asyncio.create_task(run_scheduler())
+    logger.info("Started daily update scheduler")
+
     yield
+
+    # Cleanup
+    if scheduler_task:
+        scheduler_task.cancel()
+        try:
+            await scheduler_task
+        except asyncio.CancelledError:
+            pass
+    logger.info("Stopped daily update scheduler")
 
 
 app = FastAPI(lifespan=lifespan)
@@ -191,7 +215,7 @@ async def search(
             if "arxiv" in sources and len(sources) == 1:
                 yield ysm("status", f"Searching in a database of 100000+ arXiv articles")
             else:
-                yield ysm("status", f"Searching in a database of {CURR_DB_SIZE} items {" and 100000+ arXiv articles" if "arxiv" in sources else ""}")
+                yield ysm("status", f"Searching in a database of {CURR_DB_SIZE} items{' and 100000+ arXiv articles' if 'arxiv' in sources else ''}")
 
 
 
