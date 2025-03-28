@@ -59,7 +59,93 @@ async def fetch_additional_details(page, product_url: str) -> Dict:
 
 async def scrape_product_hunt_monthly(year: int, month: int, num_scrolls: int = 5) -> List[Dict]:
     try:
-        url = f"https://www.producthunt.com/leaderboard/monthly/{year}/{month}/all"
+        url = f"https://www.producthunt.com/leaderboard/monthly/{year}/{month}"
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+
+            # Create a semaphore to limit concurrent page operations
+            semaphore = Semaphore(5)  # Limit to 5 concurrent requests
+
+            # Create a context that will be shared among pages
+            context = await browser.new_context()
+            main_page = await context.new_page()
+
+            # Fetch main page content
+            await main_page.goto(url)
+            for _ in range(num_scrolls):
+                await main_page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                await main_page.wait_for_timeout(2000)
+
+            html = await main_page.content()
+            # Add debug logging
+            logging.debug(f"Page HTML: {html[:1000]}")  # Print first 1000 chars for debugging
+            soup = BeautifulSoup(html, 'html.parser')
+            products = []
+
+            # Try both old and new selectors
+            product_sections = soup.find_all('section', attrs={'data-test': lambda x: x and x.startswith('post-item-')})
+            if not product_sections:
+                # Try alternative selector for product items
+                product_sections = soup.find_all('div', {'class': lambda x: x and 'cursor-pointer' in x and 'rounded-xl' in x})
+                logging.info(f"Found {len(product_sections)} products using alternative selector")
+
+            async def process_product(section):
+                try:
+                    title_link = section.find('a', attrs={'data-test': lambda x: x and x.startswith('post-name-')})
+                    title = title_link.get_text(strip=True).rstrip()
+                    logging.info(f"Processing {title}")
+                    link = 'https://www.producthunt.com' + title_link['href']
+
+                    img_tag = section.find('img')
+                    image_url = img_tag['src'] if img_tag else None
+
+                    # Fetch additional details with semaphore
+                    async with semaphore:
+                        product_page = await context.new_page()
+                        additional_details = await fetch_additional_details(product_page, link)
+                        await product_page.close()
+
+                    # Find the post date
+                    date_element = section.find('span', attrs={'data-test': lambda x: x and x.startswith('post-date-')})
+
+                    # Get short description as fallback if long description is not available
+                    short_description = section.find('a', {'class': 'text-secondary'}).get_text(strip=True)
+
+                    product = {
+                        "title": title,
+                        "description": additional_details['description'] or short_description,  # Use long description if available, otherwise use short
+                        "link": link,
+                        "source": "product_hunt",
+                        "source_link": url,
+                        "image_url": image_url or PRODUCT_HUNT_IMAGE_URL,
+                        "author_name": additional_details['author_name'],
+                        "author_profile_url": additional_details['author_profile_url'],
+                        "categories": additional_details['categories'],
+                        "created_at": None,
+                    }
+                    return product
+                except Exception as e:
+                    logging.error(f"Error processing product section: {e}")
+                    return None
+
+            # Process all products in parallel
+            tasks = [process_product(section) for section in product_sections]
+            results = await asyncio.gather(*tasks)
+
+            # Filter out None results from errors
+            products = [p for p in results if p is not None]
+
+            await browser.close()
+            return products
+
+    except Exception as e:
+        logging.error(f"Error scraping Product Hunt monthly page: {e}")
+        return []
+
+async def scrape_product_hunt_daily(year: int, month: int, day: int, num_scrolls: int = 5) -> List[Dict]:
+    try:
+        url = f"https://www.producthunt.com/leaderboard/daily/{year}/{month}/{day}/all"
 
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -99,16 +185,15 @@ async def scrape_product_hunt_monthly(year: int, month: int, num_scrolls: int = 
                         additional_details = await fetch_additional_details(product_page, link)
                         await product_page.close()
 
-                    # Find the post date
-                    date_element = section.find('span', attrs={'data-test': lambda x: x and x.startswith('post-date-')})
-                    created_at = date_element.get('datetime') if date_element else datetime.now().isoformat()
+                    # Create datetime object for the specific day
+                    created_at = datetime(year, month, day).isoformat()
 
                     # Get short description as fallback if long description is not available
                     short_description = section.find('a', {'class': 'text-secondary'}).get_text(strip=True)
 
                     product = {
                         "title": title,
-                        "description": additional_details['description'] or short_description,  # Use long description if available, otherwise use short
+                        "description": additional_details['description'] or short_description,
                         "link": link,
                         "source": "product_hunt",
                         "source_link": url,
@@ -134,7 +219,7 @@ async def scrape_product_hunt_monthly(year: int, month: int, num_scrolls: int = 
             return products
 
     except Exception as e:
-        logging.error(f"Error scraping Product Hunt monthly page: {e}")
+        logging.error(f"Error scraping Product Hunt daily page: {e}")
         return []
 
 

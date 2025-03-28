@@ -51,7 +51,7 @@ export function FeedbackButton() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
-          className="fixed bottom-6 right-6 h-12 w-12 rounded-full z-50 dshadow-lg"
+          className="fixed bottom-6 right-6 h-12 w-12 rounded-full z-[1000] dshadow-lg"
           size="icon"
         >
           <Mail className="h-6 w-6" />

@@ -9,7 +9,7 @@ const features = [
   },
   {
     icon: Zap,
-    label: "Weekly Updates",
+    label: "Daily Updates",
   },
   {
     icon: Search,

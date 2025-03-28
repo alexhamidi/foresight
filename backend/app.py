@@ -14,6 +14,7 @@ from fastapi.responses import StreamingResponse
 import json
 import asyncio
 import sentry_sdk
+from contextlib import asynccontextmanager
 
 # =======================================================================#
 # CONFIGURE THE APP AND LOGGING
@@ -38,21 +39,21 @@ ALLOWED_ORIGINS = [
     "https://foresight-flax.vercel.app",
     "http://localhost:3002",  # For local development
 ]
-CURR_DB_SIZE = 5680 + 3000
+CURR_DB_SIZE = 0
 
 if not FRONTEND_URL:
     raise ValueError("FRONTEND_URL not configured in environment variables")
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global CURR_DB_SIZE
+    await sup.init_supabase()
+    CURR_DB_SIZE = await sup.get_db_size()
+    logger.info(f"Initialized DB size: {CURR_DB_SIZE}")
+    yield
 
-# @app.on_event("startup")
-# async def startup_event():
-#     global CURR_DB_SIZE
-#     # Initialize Supabase first
-#     await sup.init_supabase()
-#     CURR_DB_SIZE = sup.get_db_size()
-#     logger.info(f"Initialized DB size: {CURR_DB_SIZE}")
-#     logger.info(f"Allowed origins: {ALLOWED_ORIGINS}")
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -79,7 +80,28 @@ def get_frontend_url():
     return {"frontend_urls": FRONTEND_URL}
 
 
+@app.post("/api/chat")
+async def chat(request: dict):
+    try:
+        content = request.get("message").get("content")
+        if not content:
+            raise HTTPException(status_code=400, detail="message content is required")
 
+        # First get AI response without items to check if we need sources
+        ai_response = ai.get_chat_response(content)
+
+        items = []
+        if ai_response["needs_sources"]:
+            # Only create embedding and fetch items if needed
+            query_embedding = await emb.create_embedding(content)
+            items = await sup.get_items(["product_hunt", "reddit", "y_combinator", "arxiv"], query_embedding, 10, 20000, [], [], [])
+            # Get new response with items
+            ai_response = ai.get_chat_response(content, items)
+
+        return {"message": ai_response["content"], "items": items}
+    except Exception as e:
+        logger.error(f"Error in chat: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/feedback")
 async def post_feedback(feedback: dict):
@@ -165,8 +187,13 @@ async def search(
             query_embedding = await emb.create_embedding(enriched_query)
             items = []
 
-            yield ysm("status", f"Searching in a database of {CURR_DB_SIZE} items")
-            logger.info(f"Starting search across sources: {sources}")
+
+            if "arxiv" in sources and len(sources) == 1:
+                yield ysm("status", f"Searching in a database of 100000+ arXiv articles")
+            else:
+                yield ysm("status", f"Searching in a database of {CURR_DB_SIZE} items {" and 100000+ arXiv articles" if "arxiv" in sources else ""}")
+
+
 
 
             if set(sources) - {"arxiv"}:
@@ -180,7 +207,6 @@ async def search(
                 items.extend(arxiv_items)
                 logger.debug(f"Retrieved {len(arxiv_items)} items from arXiv")
 
-            print(json.dumps(items, indent=2))
             yield ysm("status", f"Found {len(items)} matching results")
             logger.info(f"Search completed - Found {len(items)} total results")
 

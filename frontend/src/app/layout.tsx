@@ -24,8 +24,8 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" data-ailoaded="true">
-        <body className={`${inter.variable} font-sans bg-white`} data-ailoaded="true">
+      <html lang="en">
+        <body className={`${inter.variable} font-sans bg-white`}>
           <Header />
           {children}
           <FeedbackButton />

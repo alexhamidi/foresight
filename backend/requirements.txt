@@ -13,3 +13,4 @@ beautifulsoup4
 playwright
 g
 sentry-sdk==1.40.6
+schedule==1.2.1

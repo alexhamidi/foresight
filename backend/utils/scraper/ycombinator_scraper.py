@@ -131,10 +131,9 @@ async def fetch_company_details(page, company_url: str) -> Dict[str, Any]:
             'website_url': ''
         }
 
-async def scrape_yc_companies(num_companies: int = 100, num_scrolls: int = 5) -> List[Dict[str, Any]]:
+async def scrape_yc_companies(num_companies: int = 100, num_scrolls: int = 5, url: str = "https://www.ycombinator.com/companies") -> List[Dict[str, Any]]:
     """Scrape YC companies and their details"""
     try:
-        base_url = "https://www.ycombinator.com/companies"
 
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -145,7 +144,7 @@ async def scrape_yc_companies(num_companies: int = 100, num_scrolls: int = 5) ->
 
             # Fetch main companies page
             main_page = await context.new_page()
-            await main_page.goto(base_url)
+            await main_page.goto(url)
 
             # Scroll to load more companies
             for _ in range(num_scrolls):  # Adjust number of scrolls based on how many companies you want

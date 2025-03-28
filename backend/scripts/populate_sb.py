@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import json
 
 # Add the project root directory to Python path
 project_root = Path(__file__).parent.parent
@@ -10,6 +11,7 @@ from utils import supabase, embedding
 from utils.scraper import hackernews_scraper, reddit_scraper, product_hunt_scraper, arxiv_scraper, ycombinator_scraper
 import asyncio
 from utils.logger import setup_logger
+
 
 # Initialize logger
 logger = setup_logger("populate_sb")
@@ -40,10 +42,12 @@ async def main():
     # embeddings = await embedding.get_item_embeddings(re_items)
     # await supabase.add_items(re_items, embeddings, "re_items")
 
-    ph_items = await product_hunt_scraper.scrape_product_hunt_monthly(2024, 12, num_scrolls=10)
-    embeddings = await embedding.get_item_embeddings(ph_items)
-    await supabase.add_items(ph_items, embeddings, "ph_items")
-    logger.info(f"Added {len(ph_items)} items ")
+    # ph_items = await product_hunt_scraper.scrape_product_hunt_monthly(2025, 1, num_scrolls=1)
+    # print(json.dumps(ph_items, indent=2))
+    # embeddings = await embedding.get_item_embeddings(ph_items)
+    # await supabase.add_items(ph_items, embeddings, "ph_items")
+    # logger.info(f"Added {len(ph_items)} items ")
+
 
     # years = [2024, 2025]
     # months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
@@ -57,6 +61,31 @@ async def main():
     #         await supabase.add_items(ph_items, embeddings, "ph_items")
     #         logger.info(f"Added {len(new_items)} items for month {month} of year {year}")
     # logger.info(f"Number of Product Hunt items: {len(ph_items)}")
+    # Loop through each day in 2025 up to current date
+
+
+    year = 2025
+    months = [3]  # Assuming we're in early 2025
+    days_in_month = {1: 31, 2: 28, 3: 26}  # Days in each month (2025 is not a leap year)
+
+    for month in months:
+        for day in range(1, days_in_month[month] + 1):
+            try:
+                daily_items = await product_hunt_scraper.scrape_product_hunt_daily(year, month, day, num_scrolls=5)
+                if daily_items:
+                    embeddings = await embedding.get_item_embeddings(daily_items)
+                    await supabase.add_items(daily_items, embeddings, "ph_items")
+                    logger.info(f"Added {len(daily_items)} items for {year}-{month:02d}-{day:02d}")
+                else:
+                    logger.warning(f"No items found for {year}-{month:02d}-{day:02d}")
+
+                # Add a small delay to avoid overwhelming the server
+                await asyncio.sleep(30)
+            except Exception as e:
+                logger.error(f"Error processing {year}-{month:02d}-{day:02d}: {e}")
+                continue
+
+
 
     # items = p_items
 

@@ -6,9 +6,9 @@ interface SearchSuggestionsProps {
 }
 
 const suggestions = [
-  "Automated framework for deep learning",
+  "Automated framework for deep learning model customization",
   "AI-powered platform for categorizing and prioritizing user feedback",
-  "Project to generate 3D logos from 2d SVG",
+  "Project to generate 3D logos from 2d SVG files",
   "AI-powered video editing tool",
   "Real-time language translation app",
   "Music composition and Production with AI",

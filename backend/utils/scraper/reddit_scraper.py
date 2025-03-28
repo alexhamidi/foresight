@@ -108,6 +108,8 @@ load_dotenv()
 
 REDDIT_IMAGE_URL = "https://static-00.iconduck.com/assets.00/reddit-icon-512x512-mp8wosd1.png"
 
+
+
 async def get_reddit_posts(subreddit: str, limit: int = 200) -> List[Dict]:
     """
     Fetch the 200 most recent posts from r/sideproject subreddit

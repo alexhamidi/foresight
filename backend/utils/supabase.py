@@ -31,6 +31,9 @@ async def init_supabase():
     return asupabase, supabase
 
 
+async def get_db_size():
+    response = await asupabase.rpc('get_total_item_count').execute()
+    return response.data
 
 
 async def add_items(items: List[dict[str, Any]], embeddings: np.ndarray, table) -> None:
