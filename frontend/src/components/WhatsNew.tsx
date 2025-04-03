@@ -9,7 +9,7 @@ const WhatsNew = () => {
         <div className="w-2 h-2 rounded-full bg-green-200 flex justify-center items-center">
           <div className="w-1 h-1 rounded-full bg-green-600"></div>
         </div>
-        <span className="ml-2 text-slate-500">What's New (3/27) </span>
+        <span className="ml-2 text-slate-500">What's New (4/3) </span>
       </div>
       <span className="flex items-center ml-2 text-sm">
         Implemented daily project updates, added 5000+ sources
