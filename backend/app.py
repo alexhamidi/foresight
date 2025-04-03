@@ -40,6 +40,8 @@ logger = setup_logger("app")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://foresight-flax.vercel.app").split(",")
 ALLOWED_ORIGINS = [
     "https://foresight-flax.vercel.app",
+    "https://tryforsite.com",
+    "https://www.tryforsite.com",
     "http://localhost:3002",  # For local development
 ]
 CURR_DB_SIZE = 0
