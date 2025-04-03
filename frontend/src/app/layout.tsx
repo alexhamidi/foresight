@@ -10,7 +10,7 @@ import { FeedbackButton } from '@/components/FeedbackButton';
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Foresight",
+  title: "Forsite",
   description: "Search the future",
   icons: {
     icon: '/favicon.svg',
