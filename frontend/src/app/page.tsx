@@ -121,7 +121,7 @@ export default function Home() {
         <div className="max-w-5xl mx-auto px-4 py-12">
           <div className="text-center mb-12">
             <WhatsNew />
-            <h1 className="text-5xl font-bold pb-1">Foresight</h1>
+            <h1 className="text-5xl font-bold pb-1">Forsite</h1>
             <p className="text-lg text-gray-600 mb-8">Search for projects, everywhere.</p>
             <FeatureBadges />
           </div>
