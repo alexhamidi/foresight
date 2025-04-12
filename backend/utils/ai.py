@@ -5,10 +5,19 @@ import json
 from utils.logger import setup_logger
 from utils.embedding import create_embedding
 from utils.supabase import get_items
+from pydantic import BaseModel
+from google import genai
+
+
 
 # Initialize OpenAI client and logger
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 logger = setup_logger("ai")
+
+class AnalysisResponse(BaseModel):
+    problem_statement: str
+    target_users: str
+    terms: List[str]
 
 def analyze_query(query: str) -> Dict[str, str]:
     system_prompt = """You are a product analyst who helps identify core information from product ideas.
@@ -17,28 +26,33 @@ def analyze_query(query: str) -> Dict[str, str]:
     user_prompt = f"""
     Please analyze this product/project idea.
     {query}
-    Respond in this JSON format:
-    {{
-        "problem_statement": "The core problem being solved",
-        "target_users": "Who experiences this problem",
-        "terms": ["term1", "term2", "term3"]
-    }}
-    Note: terms must be a list of strings, not a single string.
     """
 
     try:
         logger.debug(f"Analyzing query: {query}")
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            response_format={ "type": "json_object" }
+
+        prompt = f"""
+SYSTEM PROMPT:
+{system_prompt}
+
+USER PROMPT:
+{user_prompt}
+"""
+        # Initialize Gemini client
+        gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+        # Generate content with JSON schema
+        response = gemini_client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=prompt,
+            config={
+                'response_mime_type': 'application/json',
+                'response_schema': AnalysisResponse,
+            }
         )
 
-        content = response.choices[0].message.content
-        json_content = json.loads(content)
+        # Get the parsed response
+        json_content = response.parsed.model_dump()
 
         # Ensure terms is a list
         if isinstance(json_content.get('terms'), str):
@@ -95,3 +109,12 @@ def get_chat_response(message: str, items: List[dict] = None) -> dict:
             "needs_sources": False
         }
 
+
+def main():
+    pass
+
+
+
+if __name__ == "__main__":
+
+    main()
