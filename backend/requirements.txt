@@ -11,6 +11,6 @@ en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_
 asyncpraw
 beautifulsoup4
 playwright
-g
+google-genai
 sentry-sdk==1.40.6
 schedule==1.2.1
