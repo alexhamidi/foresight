@@ -37,19 +37,23 @@ export default function ChatHistoryOverlay({
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [actionMode, setActionMode] = useState<'select' | 'rename' | 'delete'>('select');
+  const [actionMode, setActionMode] = useState<"select" | "rename" | "delete">(
+    "select",
+  );
 
   useEffect(() => {
     if (isOpen) {
-      const currentIndex = chatSessions.findIndex(chat => chat.id === currentChat.id);
+      const currentIndex = chatSessions.findIndex(
+        (chat) => chat.id === currentChat.id,
+      );
       setSelectedIndex(currentIndex);
-      setActionMode('select');
+      setActionMode("select");
     }
   }, [isOpen, currentChat.id, chatSessions]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'h' && (e.metaKey || e.ctrlKey)) {
+      if (e.key === "h" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         if (isOpen && (isNewChatInput || editingChatId)) {
           // Cancel any ongoing edits when closing with cmd+h
@@ -59,7 +63,7 @@ export default function ChatHistoryOverlay({
           setEditingTitle("");
         }
         onClose();
-      } else if (e.key === 'Escape') {
+      } else if (e.key === "Escape") {
         if (isNewChatInput || editingChatId) {
           e.preventDefault();
           setIsNewChatInput(false);
@@ -70,42 +74,44 @@ export default function ChatHistoryOverlay({
           onClose();
         }
       } else if (isOpen && !isNewChatInput && !editingChatId) {
-        if (e.key === 'ArrowDown') {
+        if (e.key === "ArrowDown") {
           e.preventDefault();
-          setSelectedIndex(prev => Math.min(prev + 1, chatSessions.length - 1));
-          setActionMode('select');
-        } else if (e.key === 'ArrowUp') {
+          setSelectedIndex((prev) =>
+            Math.min(prev + 1, chatSessions.length - 1),
+          );
+          setActionMode("select");
+        } else if (e.key === "ArrowUp") {
           e.preventDefault();
-          setSelectedIndex(prev => {
+          setSelectedIndex((prev) => {
             if (prev === -1) return chatSessions.length - 1;
             if (prev === 0) return -1;
             return prev - 1;
           });
-          setActionMode('select');
-        } else if (e.key === 'ArrowRight' && selectedIndex >= 0) {
+          setActionMode("select");
+        } else if (e.key === "ArrowRight" && selectedIndex >= 0) {
           e.preventDefault();
-          setActionMode(prev => {
-            if (prev === 'select') return 'rename';
-            if (prev === 'rename') return 'delete';
-            return 'select';
+          setActionMode((prev) => {
+            if (prev === "select") return "rename";
+            if (prev === "rename") return "delete";
+            return "select";
           });
-        } else if (e.key === 'ArrowLeft' && selectedIndex >= 0) {
+        } else if (e.key === "ArrowLeft" && selectedIndex >= 0) {
           e.preventDefault();
-          setActionMode(prev => {
-            if (prev === 'delete') return 'rename';
-            if (prev === 'rename') return 'select';
-            return 'delete';
+          setActionMode((prev) => {
+            if (prev === "delete") return "rename";
+            if (prev === "rename") return "select";
+            return "delete";
           });
-        } else if (e.key === 'Enter') {
+        } else if (e.key === "Enter") {
           e.preventDefault();
           if (selectedIndex === -1) {
             handleNewChat();
           } else {
-            if (actionMode === 'select') {
+            if (actionMode === "select") {
               onSelectChat(chatSessions[selectedIndex]);
-            } else if (actionMode === 'rename') {
+            } else if (actionMode === "rename") {
               handleStartRename(chatSessions[selectedIndex]);
-            } else if (actionMode === 'delete') {
+            } else if (actionMode === "delete") {
               onDeleteChat(chatSessions[selectedIndex].id);
             }
           }
@@ -113,9 +119,19 @@ export default function ChatHistoryOverlay({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, chatSessions, isNewChatInput, selectedIndex, editingChatId, actionMode, onClose, onSelectChat, onDeleteChat]);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    isOpen,
+    chatSessions,
+    isNewChatInput,
+    selectedIndex,
+    editingChatId,
+    actionMode,
+    onClose,
+    onSelectChat,
+    onDeleteChat,
+  ]);
 
   const handleNewChat = () => {
     if (!isNewChatInput) {
@@ -156,20 +172,20 @@ export default function ChatHistoryOverlay({
   };
 
   const handleNewChatKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleNewChat();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       e.preventDefault();
       handleCancelNewChat();
     }
   };
 
   const handleEditKeyDown = (e: React.KeyboardEvent, chatId: string) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleRename(chatId);
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       e.preventDefault();
       setEditingChatId(null);
       setEditingTitle("");
@@ -204,7 +220,7 @@ export default function ChatHistoryOverlay({
             onClick={handleNewChat}
             onMouseEnter={() => setSelectedIndex(-1)}
             className={`w-full bg-transparent border hover:bg-transparent border-zinc-200 gap-2 h-12 text-base mb-4 rounded-xl text-zinc-600 transition-colors ${
-              selectedIndex === -1 ? 'ring-2 ring-zinc-300' : ''
+              selectedIndex === -1 ? "ring-2 ring-zinc-300" : ""
             }`}
           >
             <Plus className="h-4 w-4" />
@@ -214,10 +230,7 @@ export default function ChatHistoryOverlay({
 
         <div className="space-y-2">
           {chatSessions.map((chat, index) => (
-            <div
-              key={chat.id}
-              className="flex gap-2 items-stretch"
-            >
+            <div key={chat.id} className="flex gap-2 items-stretch">
               {editingChatId === chat.id ? (
                 <div className="flex-1 flex gap-2">
                   <Input
@@ -244,23 +257,27 @@ export default function ChatHistoryOverlay({
                     onClick={() => onSelectChat(chat)}
                     onMouseEnter={() => {
                       setSelectedIndex(index);
-                      setActionMode('select');
+                      setActionMode("select");
                     }}
                     className={`flex-1 text-left p-3 rounded-xl transition-colors flex items-center gap-4 ${
-                      currentChat.id === chat.id ? 'bg-zinc-600 text-white' : ''
-                    } ${selectedIndex === index && actionMode === 'select' ? 'ring-2 ring-zinc-300' : ''}`}
+                      currentChat.id === chat.id ? "bg-zinc-600 text-white" : ""
+                    } ${selectedIndex === index && actionMode === "select" ? "ring-2 ring-zinc-300" : ""}`}
                   >
-                    <div className="font-medium text-base truncate">{chat.title}</div>
+                    <div className="font-medium text-base truncate">
+                      {chat.title}
+                    </div>
                   </button>
                   <div className="flex gap-2 self-stretch">
                     <Button
                       onClick={() => handleStartRename(chat)}
                       onMouseEnter={() => {
                         setSelectedIndex(index);
-                        setActionMode('rename');
+                        setActionMode("rename");
                       }}
                       className={`h-auto w-12 rounded-xl bg-transparent hover:bg-transparent border border-zinc-200 ${
-                        selectedIndex === index && actionMode === 'rename' ? 'ring-2 ring-zinc-300' : ''
+                        selectedIndex === index && actionMode === "rename"
+                          ? "ring-2 ring-zinc-300"
+                          : ""
                       }`}
                       variant="outline"
                     >
@@ -270,10 +287,12 @@ export default function ChatHistoryOverlay({
                       onClick={() => onDeleteChat(chat.id)}
                       onMouseEnter={() => {
                         setSelectedIndex(index);
-                        setActionMode('delete');
+                        setActionMode("delete");
                       }}
                       className={`h-auto w-12 rounded-xl bg-transparent hover:bg-transparent border border-zinc-200 text-red-500 hover:text-red-500 ${
-                        selectedIndex === index && actionMode === 'delete' ? 'ring-2 ring-zinc-300' : ''
+                        selectedIndex === index && actionMode === "delete"
+                          ? "ring-2 ring-zinc-300"
+                          : ""
                       }`}
                       variant="outline"
                     >

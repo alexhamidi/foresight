@@ -1,15 +1,19 @@
 # =======================================================================#
 # IMPORTS
 # =======================================================================#
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends, Cookie, Body
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from dotenv import load_dotenv
 import os
+from utils.ai import chat as cai
+from utils.ai import search as sai
+from utils.supabase import init
+from utils.supabase import notes as nsup
+from utils.supabase import feedback as fsup
+from utils.supabase import items as isup
 from utils.logger import setup_logger
-import logging
-from utils import embedding as emb, supabase as sup, arxiv, ai
-import time
+from utils import embedding as emb, arxiv
 from fastapi.responses import StreamingResponse
 import json
 import asyncio
@@ -17,6 +21,9 @@ import sentry_sdk
 from contextlib import asynccontextmanager
 import schedule
 from scripts.daily_update import update_task
+from typing import Optional
+from pydantic import BaseModel
+
 
 # =======================================================================#
 # CONFIGURE THE APP AND LOGGING
@@ -53,8 +60,8 @@ if not FRONTEND_URL:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global CURR_DB_SIZE, scheduler_task
-    await sup.init_supabase()
-    CURR_DB_SIZE = await sup.get_db_size()
+    await init.init_supabase()
+    CURR_DB_SIZE = await isup.get_num_items()
     logger.info(f"Initialized DB size: {CURR_DB_SIZE}")
 
     # Start the scheduler in a background task
@@ -86,67 +93,45 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
+
 # =======================================================================#
-# API ENDPOINTS
+# AUTH UTILITIES
 # =======================================================================#
 
-@app.get("/sentry-debug")
-async def trigger_error():
-    division_by_zero = 1 / 0
+class NoteCreate(BaseModel):
+    name: str
+    content: str
 
-@app.get("/api/health")
-def health_check():
-    return {"status": "healthy", "message": "API is running", "status_code": 200}
+class NoteUpdate(BaseModel):
+    name: Optional[str] = None
+    content: Optional[str] = None
 
-@app.get("/api/frontend-url")
-def get_frontend_url():
-    return {"frontend_urls": FRONTEND_URL}
+async def get_current_user(jwt: Optional[str] = Cookie(None, alias="sb-access-token")) -> str:
 
-
-@app.post("/api/chat")
-async def chat(request: dict):
+    """Validate JWT and return user_id"""
+    if not jwt:
+        print("No JWT provided")
+        raise HTTPException(status_code=401, detail="Not authenticated")
     try:
-        content = request.get("message").get("content")
-        if not content:
-            raise HTTPException(status_code=400, detail="message content is required")
-
-        # First get AI response without items to check if we need sources
-        ai_response = ai.get_chat_response(content)
-
-        items = []
-        if ai_response["needs_sources"]:
-            # Only create embedding and fetch items if needed
-            query_embedding = await emb.create_embedding(content)
-            items = await sup.get_items(["product_hunt", "reddit", "y_combinator", "arxiv"], query_embedding, 10, 20000, [], [], [])
-            # Get new response with items
-            ai_response = ai.get_chat_response(content, items)
-
-        return {"message": ai_response["content"], "items": items}
+        print(f"Attempting to verify JWT token: {jwt}\n\n")  # Only print first 20 chars for security
+        # Verify JWT with Supabase
+        user = await init.asupabase.auth.get_user(jwt)
+        print(f"Successfully verified user: {user.user.id}")
+        return user.user.id
     except Exception as e:
-        logger.error(f"Error in chat: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/feedback")
-async def post_feedback(feedback: dict):
-    try:
-        name = feedback.get("name", "")
-        email = feedback.get("email", "")
-        message = feedback.get("message", "")
-
-        if not message:
-            raise HTTPException(status_code=400, detail="Message is required")
-
-        await sup.post_feedback(message=message, name=name, email=email)
-        return {"status": "success", "message": "Feedback received"}
-    except Exception as e:
-        logger.error(f"Error posting feedback: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error verifying JWT: {str(e)}")
+        print(f"Error type: {type(e)}")
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
 
+# =======================================================================#
+# Helper functions
+# =======================================================================#
 def ysm(type: str, message: str | dict) -> str:
     """Helper function to yield SSE messages in the correct format"""
     try:
@@ -166,7 +151,41 @@ def ysm(type: str, message: str | dict) -> str:
         # Return a safe fallback message
         return f"data: {json.dumps({'type': 'error', 'message': 'Error formatting message'})}\n\n"
 
+# =======================================================================#
+# Debugging and health check
+# =======================================================================#
+@app.get("/api/health")
+def health_check():
+    return {"status": "healthy", "message": "API is running", "status_code": 200}
 
+@app.get("/api/frontend-url")
+def get_frontend_url():
+    return {"frontend_urls": FRONTEND_URL}
+
+
+# =======================================================================#
+# Feedback Endpoints
+# =======================================================================#
+@app.post("/api/feedback")
+async def post_feedback(feedback: dict):
+    try:
+        name = feedback.get("name", "")
+        email = feedback.get("email", "")
+        message = feedback.get("message", "")
+
+        if not message:
+            raise HTTPException(status_code=400, detail="Message is required")
+
+        await fsup.post_feedback(message=message, name=name, email=email)
+        return {"status": "success", "message": "Feedback received"}
+    except Exception as e:
+        logger.error(f"Error posting feedback: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =======================================================================#
+# Search Endpoints
+# =======================================================================#
 @app.get("/api/search")
 async def search(
     query: str = Query(...),
@@ -198,7 +217,7 @@ async def search(
         try:
             yield ysm("status", "Analyzing your search query...")
 
-            ai_analysis = ai.analyze_query(query)
+            ai_analysis = sai.analyze_query(query)
             logger.debug(f"AI Analysis results - Problem Statement: {ai_analysis.get('problem_statement')}, Target Users: {ai_analysis.get('target_users')}")
 
             yield ysm("status", f"Problem Statement: {str(ai_analysis.get('problem_statement', ''))}")
@@ -214,17 +233,13 @@ async def search(
             query_embedding = await emb.create_embedding(enriched_query)
             items = []
 
-
             if "arxiv" in sources and len(sources) == 1:
-                yield ysm("status", f"Searching in a database of 100000+ arXiv articles")
+                yield ysm("status", "Searching in a database of 100000+ arXiv articles")
             else:
                 yield ysm("status", f"Searching in a database of {CURR_DB_SIZE} items{' and 100000+ arXiv articles' if 'arxiv' in sources else ''}")
 
-
-
-
             if set(sources) - {"arxiv"}:
-                items = await sup.get_items(sources, query_embedding, num_results, recency,
+                items = await isup.get_items(sources, query_embedding, num_results, recency,
                                 reddit_category_list, product_hunt_category_list, y_combinator_category_list)
                 logger.debug(f"Retrieved {len(items)} items from Supabase sources")
 
@@ -267,6 +282,79 @@ async def search(
         media_type="text/event-stream"
     )
 
+# =======================================================================#
+# NOTE ENDPOINTS
+# =======================================================================#
+
+@app.get("/api/notes")
+async def get_notes(user_id: str = Depends(get_current_user)):
+    print(f"Getting notes for user: {user_id}")
+    """Get all notes for the authenticated user"""
+    try:
+        notes = await nsup.get_user_notes(user_id)
+        return {"notes": notes}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/notes")
+async def create_note(note: NoteCreate, user_id: str = Depends(get_current_user)):
+    """Create a new note for the authenticated user"""
+    try:
+        created_note = await nsup.create_note(user_id, note.name, note.content)
+        return created_note
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/notes/{note_id}")
+async def update_note(note_id: str, note: NoteUpdate, user_id: str = Depends(get_current_user)):
+    """Update a note if it belongs to the authenticated user"""
+    print("received update note request")
+    try:
+        updates = note.dict(exclude_unset=True)
+        if not updates:
+            raise HTTPException(status_code=400, detail="No valid update fields provided")
+
+        updated_note = await nsup.update_note(note_id, user_id, updates)
+        return updated_note
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/notes/{note_id}")
+async def delete_note(note_id: str, user_id: str = Depends(get_current_user)):
+    """Delete a note if it belongs to the authenticated user"""
+    try:
+        await nsup.delete_note(note_id, user_id)
+        return {"status": "success", "message": "Note deleted successfully"}
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =======================================================================#
+# Chat Endpoints
+# =======================================================================#
+@app.post("/api/chat")
+async def chat(request: dict = Body(...), user_id: str = Depends(get_current_user)):
+    try:
+
+        note_id = request.get("note_id")
+        prompt = request.get("prompt")
+        idea = request.get("idea")
+        chat_context = request.get("chat_context")
+        print(f"chat_context: {chat_context}")
+        if not prompt:
+            raise HTTPException(status_code=400, detail="message content is required")
+
+        ai_response = await cai.get_idea_chat_response(chat_context, idea, prompt)
+        await nsup.update_messages(user_id, note_id, prompt, ai_response)
+
+        return {"message": ai_response}
+    except Exception as e:
+        logger.error(f"Error in chat: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # =======================================================================#
 # RUN THE APPLICATION

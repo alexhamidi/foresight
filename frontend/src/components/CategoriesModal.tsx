@@ -22,16 +22,20 @@ export default function CategoriesModal({
   type,
 }: CategoriesModalProps) {
   const titles = {
-    arxiv: 'Select arXiv Categories',
-    reddit: 'Select Subreddits',
-    product_hunt: 'Select Product Hunt Categories',
-    y_combinator: 'Select Y Combinator Categories'
+    arxiv: "Select arXiv Categories",
+    reddit: "Select Subreddits",
+    product_hunt: "Select Product Hunt Categories",
+    y_combinator: "Select Y Combinator Categories",
   };
 
   const currentCategories = categories[type];
   const [lastCheckedIndex, setLastCheckedIndex] = useState<number | null>(null);
 
-  const handleCheckboxChange = (index: number, checked: boolean, shiftKey: boolean) => {
+  const handleCheckboxChange = (
+    index: number,
+    checked: boolean,
+    shiftKey: boolean,
+  ) => {
     if (shiftKey && lastCheckedIndex !== null) {
       const start = Math.min(lastCheckedIndex, index);
       const end = Math.max(lastCheckedIndex, index);
@@ -48,9 +52,16 @@ export default function CategoriesModal({
       onCategoriesChange(Array.from(newSelectedCategories));
     } else {
       if (checked) {
-        onCategoriesChange([...selectedCategories, currentCategories[index].value]);
+        onCategoriesChange([
+          ...selectedCategories,
+          currentCategories[index].value,
+        ]);
       } else {
-        onCategoriesChange(selectedCategories.filter((c) => c !== currentCategories[index].value));
+        onCategoriesChange(
+          selectedCategories.filter(
+            (c) => c !== currentCategories[index].value,
+          ),
+        );
       }
     }
     setLastCheckedIndex(index);
@@ -88,11 +99,21 @@ export default function CategoriesModal({
                     id={category.value}
                     checked={selectedCategories.includes(category.value)}
                     onCheckedChange={(checked) => {
-                      handleCheckboxChange(index, checked as boolean, (window.event as MouseEvent | undefined)?.shiftKey ?? false);
+                      handleCheckboxChange(
+                        index,
+                        checked as boolean,
+                        (window.event as MouseEvent | undefined)?.shiftKey ??
+                          false,
+                      );
                     }}
                   />
-                  <Label htmlFor={category.value} className="cursor-pointer py-2 flex-grow">
-                    {type === 'arxiv' ? `${category.value} (${category.label})` : category.label}
+                  <Label
+                    htmlFor={category.value}
+                    className="cursor-pointer py-2 flex-grow"
+                  >
+                    {type === "arxiv"
+                      ? `${category.value} (${category.label})`
+                      : category.label}
                   </Label>
                 </div>
               ))}

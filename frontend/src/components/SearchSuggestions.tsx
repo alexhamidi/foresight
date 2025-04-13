@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface SearchSuggestionsProps {
   onSuggestionClick: (suggestion: string) => void;
@@ -12,12 +12,14 @@ const suggestions = [
   "AI-powered video editing tool",
   "Real-time language translation app",
   "Music composition and Production with AI",
-  "Personalized email marketing optimization tool"
+  "Personalized email marketing optimization tool",
 ];
 
 const AUTO_ROTATE_INTERVAL = 2000;
 
-export default function SearchSuggestions({ onSuggestionClick }: SearchSuggestionsProps) {
+export default function SearchSuggestions({
+  onSuggestionClick,
+}: SearchSuggestionsProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -61,13 +63,14 @@ export default function SearchSuggestions({ onSuggestionClick }: SearchSuggestio
   };
 
   return (
-    <div className="relative w-full mt-6 px-12"
-         onMouseEnter={() => setIsPaused(true)}
-         onMouseLeave={() => setIsPaused(false)}>
-
+    <div
+      className="relative w-full mt-6 px-12"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
       <div className="overflow-hidden">
         <div
-          className={`flex gap-4 ${isAnimating ? 'transition-transform duration-300 ease-in-out' : ''}`}
+          className={`flex gap-4 ${isAnimating ? "transition-transform duration-300 ease-in-out" : ""}`}
           style={{ transform: `translateX(-${currentIndex * (100 / 3)}%)` }}
         >
           {duplicatedSuggestions.map((suggestion, index) => (

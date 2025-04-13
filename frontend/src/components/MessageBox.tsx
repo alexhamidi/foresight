@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { emailTemplates } from "@/constants/emailtemplates";
 import { MessageSquare, Copy, RefreshCw, Check } from "lucide-react";
-import { formatSourceName } from '@/utils/formatters';
+import { formatSourceName } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
 
 interface MessageBoxProps {
@@ -14,21 +19,28 @@ interface MessageBoxProps {
   source: string;
 }
 
-export default function MessageBox({ title, authorName, source }: MessageBoxProps) {
+export default function MessageBox({
+  title,
+  authorName,
+  source,
+}: MessageBoxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const { toast } = useToast();
   const [currentTemplateIndex, setCurrentTemplateIndex] = useState(
-    Math.floor(Math.random() * emailTemplates.length)
+    Math.floor(Math.random() * emailTemplates.length),
   );
 
   const currentTemplate = emailTemplates[currentTemplateIndex];
 
   const getFormattedTemplate = () => {
     return currentTemplate
-      .replace(/{{author_name}}/g, authorName.split(' ')[0])
+      .replace(/{{author_name}}/g, authorName.split(" ")[0])
       .replace(/{{title}}/g, title)
-      .replace(/{{source}}/g, source.startsWith('r/') ? source : formatSourceName(source));
+      .replace(
+        /{{source}}/g,
+        source.startsWith("r/") ? source : formatSourceName(source),
+      );
   };
 
   const handleCopy = async () => {
@@ -41,7 +53,7 @@ export default function MessageBox({ title, authorName, source }: MessageBoxProp
       });
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy text: ', err);
+      console.error("Failed to copy text: ", err);
       toast({
         variant: "destructive",
         description: "Failed to copy message",

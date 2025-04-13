@@ -2,12 +2,14 @@ import sys
 from pathlib import Path
 import json
 
+from utils.supabase import notes
+
 # Add the project root directory to Python path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
 # Now import after adding to path
-from utils import supabase, embedding
+from utils import embedding
 from utils.scraper import hackernews_scraper, reddit_scraper, product_hunt_scraper, arxiv_scraper, ycombinator_scraper
 import asyncio
 from utils.logger import setup_logger
@@ -74,7 +76,7 @@ async def main():
                 daily_items = await product_hunt_scraper.scrape_product_hunt_daily(year, month, day, num_scrolls=5)
                 if daily_items:
                     embeddings = await embedding.get_item_embeddings(daily_items)
-                    await supabase.add_items(daily_items, embeddings, "ph_items")
+                    await notes.add_items(daily_items, embeddings, "ph_items")
                     logger.info(f"Added {len(daily_items)} items for {year}-{month:02d}-{day:02d}")
                 else:
                     logger.warning(f"No items found for {year}-{month:02d}-{day:02d}")

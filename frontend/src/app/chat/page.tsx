@@ -34,7 +34,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [currentChat, setCurrentChat] = useState<string>('');
+  const [currentChat, setCurrentChat] = useState<string>("");
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([
     {
       id: currentChat,
@@ -54,7 +54,8 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Helper function to get current chat session
-  const getCurrentChatSession = () => chatSessions.find(chat => chat.id === currentChat);
+  const getCurrentChatSession = () =>
+    chatSessions.find((chat) => chat.id === currentChat);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -66,14 +67,14 @@ export default function ChatPage() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'h' && (e.metaKey || e.ctrlKey)) {
+      if (e.key === "h" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setIsHistoryOpen(prev => !prev);
+        setIsHistoryOpen((prev) => !prev);
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -81,16 +82,26 @@ export default function ChatPage() {
     if (!input.trim() || isLoading) return;
 
     const currentChatSession = getCurrentChatSession();
-    if (!currentChatSession || currentChatSession.messageCount >= MAX_FREE_MESSAGES) {
-      alert("You've reached the limit of 15 free messages. Please upgrade for unlimited messages.");
+    if (
+      !currentChatSession ||
+      currentChatSession.messageCount >= MAX_FREE_MESSAGES
+    ) {
+      alert(
+        "You've reached the limit of 15 free messages. Please upgrade for unlimited messages.",
+      );
       return;
     }
 
-    const userMessage: Message = { role: "user", content: input.trim(), items: null };
+    const userMessage: Message = {
+      role: "user",
+      content: input.trim(),
+      items: null,
+    };
 
     // If this is the first message, create a new chat with the first 10 characters as title
     if (messages.length === 0) {
-      const newTitle = input.trim().slice(0, 20) + (input.trim().length > 20 ? "..." : "");
+      const newTitle =
+        input.trim().slice(0, 20) + (input.trim().length > 20 ? "..." : "");
       const newChatId = uuidv4();
       const newChat: ChatSession = {
         id: newChatId,
@@ -99,35 +110,39 @@ export default function ChatPage() {
         timestamp: new Date(),
         messageCount: 0,
       };
-      setChatSessions(prev => [newChat, ...prev]);
+      setChatSessions((prev) => [newChat, ...prev]);
       setCurrentChat(newChatId);
     }
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
 
     // Update message count
-    setChatSessions(prev => prev.map(chat =>
-      chat.id === currentChat
-        ? { ...chat, messageCount: chat.messageCount + 1 }
-        : chat
-    ));
+    setChatSessions((prev) =>
+      prev.map((chat) =>
+        chat.id === currentChat
+          ? { ...chat, messageCount: chat.messageCount + 1 }
+          : chat,
+      ),
+    );
 
     try {
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/chat`, {
-        message: userMessage,
-      });
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/chat`,
+        {
+          message: userMessage,
+        },
+      );
       console.log(response.data);
       const aiMessage: Message = {
         role: "assistant",
         content: response.data.message,
-        items: response.data.items
+        items: response.data.items,
       };
 
-      setMessages(prev => [...prev, aiMessage]);
+      setMessages((prev) => [...prev, aiMessage]);
       setIsLoading(false);
-
     } catch (error) {
       console.error("Error fetching data:", error);
       setIsLoading(false);
@@ -144,21 +159,23 @@ export default function ChatPage() {
       timestamp: new Date(),
       messageCount: 0,
     };
-    setChatSessions(prev => [newChat, ...prev]);
+    setChatSessions((prev) => [newChat, ...prev]);
     setCurrentChat(newChatId);
     setMessages([]);
   };
 
   const handleRename = (chatId: string, newTitle: string) => {
-    setChatSessions(prev => prev.map(chat =>
-      chat.id === chatId ? { ...chat, title: newTitle } : chat
-    ));
+    setChatSessions((prev) =>
+      prev.map((chat) =>
+        chat.id === chatId ? { ...chat, title: newTitle } : chat,
+      ),
+    );
   };
 
   const handleDelete = (chatId: string) => {
-    setChatSessions(prev => prev.filter(chat => chat.id !== chatId));
+    setChatSessions((prev) => prev.filter((chat) => chat.id !== chatId));
     if (currentChat === chatId) {
-      const remainingChats = chatSessions.filter(chat => chat.id !== chatId);
+      const remainingChats = chatSessions.filter((chat) => chat.id !== chatId);
       if (remainingChats.length > 0) {
         setCurrentChat(remainingChats[0].id);
       } else {
@@ -194,16 +211,48 @@ export default function ChatPage() {
 
       {/* Title bar */}
       <div className="fixed top-2 left-1/2 transform -translate-x-1/2 z-50 flex items-center justify-center rounded-lg px-4 py-2">
-          <h1 className="text-lg font-medium text-zinc-900">
-            {currentChatSession?.title}
-          </h1>
-          <Button
-            onClick={() => setIsHistoryOpen(true)}
-            variant="ghost"
-            className="text-zinc-600 hover:bg-transparent hover:text-zinc-900"
+        <h1 className="text-lg font-medium text-zinc-900">
+          {currentChatSession?.title}
+        </h1>
+        <Button
+          onClick={() => setIsHistoryOpen(true)}
+          variant="ghost"
+          className="text-zinc-600 hover:bg-transparent hover:text-zinc-900"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="stroke-[2]"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="stroke-[2]"><path d="M3 5L19 5" stroke= "currentColor" strokeLinecap="square" strokeLinejoin="round"></path><path d="M3 12H7" stroke="currentColor" strokeLinecap="square" strokeLinejoin="round"></path><circle cx="16" cy="15" r="4" stroke="currentColor"></circle><path d="M19 18L21 20" stroke="currentColor" strokeLinecap="square"></path><path d="M3 19H7" stroke="currentColor" strokeLinecap="square" strokeLinejoin="round"></path></svg>
-          </Button>
+            <path
+              d="M3 5L19 5"
+              stroke="currentColor"
+              strokeLinecap="square"
+              strokeLinejoin="round"
+            ></path>
+            <path
+              d="M3 12H7"
+              stroke="currentColor"
+              strokeLinecap="square"
+              strokeLinejoin="round"
+            ></path>
+            <circle cx="16" cy="15" r="4" stroke="currentColor"></circle>
+            <path
+              d="M19 18L21 20"
+              stroke="currentColor"
+              strokeLinecap="square"
+            ></path>
+            <path
+              d="M3 19H7"
+              stroke="currentColor"
+              strokeLinecap="square"
+              strokeLinejoin="round"
+            ></path>
+          </svg>
+        </Button>
       </div>
 
       {/* Content layer */}
@@ -225,17 +274,22 @@ export default function ChatPage() {
                       : "bg-zinc-100/90 text-zinc-900"
                   }`}
                 >
-                  <MarkdownMessage content={message.content} isUser={message.role === "user"} />
+                  <MarkdownMessage
+                    content={message.content}
+                    isUser={message.role === "user"}
+                  />
                   {message.items && message.items.length > 0 && (
                     <div className="mt-4">
                       <button
                         onClick={() => {
                           const newMessages = [...messages];
-                          const messageIndex = newMessages.findIndex(m => m === message);
+                          const messageIndex = newMessages.findIndex(
+                            (m) => m === message,
+                          );
                           if (messageIndex !== -1) {
                             newMessages[messageIndex] = {
                               ...message,
-                              isSourcesExpanded: !message.isSourcesExpanded
+                              isSourcesExpanded: !message.isSourcesExpanded,
                             };
                             setMessages(newMessages);
                           }
@@ -283,14 +337,31 @@ export default function ChatPage() {
         </div>
 
         {/* Fixed input bar */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2 mx-auto w-[60%] mb-4 fixed bottom-0 left-0 right-0">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-2 mx-auto w-[60%] mb-4 fixed bottom-0 left-0 right-0"
+        >
           <div className="flex justify-between items-center px-2 text-sm text-zinc-500">
             <div className="inline-flex flex-col gap-2 p-2 bg-white/50 backdrop-blur-lg rounded-sm">
-              <span>Free Messages Remaining: &nbsp;
-              <span className={`${(currentChatSession?.messageCount ?? 0) >= MAX_FREE_MESSAGES ? "text-red-500 font-medium" : ""} font-mono bg-zinc-100/90 px-2 py-1 rounded-full`}>
-                {MAX_FREE_MESSAGES - (currentChatSession?.messageCount ?? 0)}/{MAX_FREE_MESSAGES}
-              </span></span>
-              <span className="text-zinc-500"><Link href="/pricing" className="text-zinc-500 hover:text-zinc-700 underline"> Upgrade</Link> for unlimited messages</span>
+              <span>
+                Free Messages Remaining: &nbsp;
+                <span
+                  className={`${(currentChatSession?.messageCount ?? 0) >= MAX_FREE_MESSAGES ? "text-red-500 font-medium" : ""} font-mono bg-zinc-100/90 px-2 py-1 rounded-full`}
+                >
+                  {MAX_FREE_MESSAGES - (currentChatSession?.messageCount ?? 0)}/
+                  {MAX_FREE_MESSAGES}
+                </span>
+              </span>
+              <span className="text-zinc-500">
+                <Link
+                  href="/pricing"
+                  className="text-zinc-500 hover:text-zinc-700 underline"
+                >
+                  {" "}
+                  Upgrade
+                </Link>{" "}
+                for unlimited messages
+              </span>
             </div>
           </div>
           <div className="flex-1 bg-white/50 backdrop-blur-lg border-zinc-200 rounded-full items-center flex border border-zinc-200 p-1 ">

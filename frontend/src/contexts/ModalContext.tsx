@@ -13,10 +13,12 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   return (
-    <ModalContext.Provider value={{
-      isFeedbackOpen,
-      setIsFeedbackOpen,
-    }}>
+    <ModalContext.Provider
+      value={{
+        isFeedbackOpen,
+        setIsFeedbackOpen,
+      }}
+    >
       {children}
     </ModalContext.Provider>
   );

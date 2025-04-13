@@ -6,42 +6,56 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormEvent, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import CategoriesModal from "./CategoriesModal";
 import SearchSuggestions from "./SearchSuggestions";
 import { SearchFilters } from "@/interfaces";
 
-type SourceOption = 'reddit' | 'product_hunt' | 'y_combinator' | 'arxiv' | 'hacker_news';
+type SourceOption =
+  | "reddit"
+  | "product_hunt"
+  | "y_combinator"
+  | "arxiv"
+  | "hacker_news";
 
 interface SearchFormProps {
-  onSearch: (query: string, sources: string[], filters: SearchFilters) => Promise<void>;
+  onSearch: (
+    query: string,
+    sources: string[],
+    filters: SearchFilters,
+  ) => Promise<void>;
   isLoading: boolean;
 }
 
-
 const sourceOptions = [
-  { value: 'reddit', label: 'Reddit' },
-  { value: 'product_hunt', label: 'Product Hunt' },
-  { value: 'y_combinator', label: 'Y Combinator' },
-  { value: 'arxiv', label: 'Arxiv' },
-  { value: 'hacker_news', label: 'Hacker News' },
+  { value: "reddit", label: "Reddit" },
+  { value: "product_hunt", label: "Product Hunt" },
+  { value: "y_combinator", label: "Y Combinator" },
+  { value: "arxiv", label: "Arxiv" },
+  { value: "hacker_news", label: "Hacker News" },
 ] as const;
 
 const resultCountOptions = [
-  { value: '10', label: '10 results' },
-  { value: '25', label: '25 results' },
-  { value: '50', label: '50 results' },
-  { value: '100', label: '100 results' },
+  { value: "10", label: "10 results" },
+  { value: "25", label: "25 results" },
+  { value: "50", label: "50 results" },
+  { value: "100", label: "100 results" },
 ] as const;
 
 const dateRangeOptions = [
-  { value: '1', label: 'Last 24 hours' },
-  { value: '7', label: 'Last 7 days' },
-  { value: '30', label: 'Last 30 days' },
-  { value: '90', label: 'Last 90 days' },
-  { value: '365', label: 'Last year' },
-  { value: '1825', label: 'Last 5 years' },
-  { value: '20000', label: 'Any time' },
+  { value: "1", label: "Last 24 hours" },
+  { value: "7", label: "Last 7 days" },
+  { value: "30", label: "Last 30 days" },
+  { value: "90", label: "Last 90 days" },
+  { value: "365", label: "Last year" },
+  { value: "1825", label: "Last 5 years" },
+  { value: "20000", label: "Any time" },
 ] as const;
 
 export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
@@ -63,31 +77,38 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
   });
 
   const handleSourceChange = (source: SourceOption) => {
-    setSelectedSources(prev => {
+    setSelectedSources((prev) => {
       if (prev.includes(source)) {
-        setFilters(prevFilters => ({
+        setFilters((prevFilters) => ({
           ...prevFilters,
-          arxivCategories: source === 'arxiv' ? [] : prevFilters.arxivCategories,
-          redditCategories: source === 'reddit' ? [] : prevFilters.redditCategories,
-          productHuntCategories: source === 'product_hunt' ? [] : prevFilters.productHuntCategories,
-          yCombinatorCategories: source === 'y_combinator' ? [] : prevFilters.yCombinatorCategories,
+          arxivCategories:
+            source === "arxiv" ? [] : prevFilters.arxivCategories,
+          redditCategories:
+            source === "reddit" ? [] : prevFilters.redditCategories,
+          productHuntCategories:
+            source === "product_hunt" ? [] : prevFilters.productHuntCategories,
+          yCombinatorCategories:
+            source === "y_combinator" ? [] : prevFilters.yCombinatorCategories,
         }));
-        return prev.filter(s => s !== source);
+        return prev.filter((s) => s !== source);
       } else {
         return [...prev, source];
       }
     });
   };
 
-  const handleMenuOpen = (e: React.MouseEvent<HTMLButtonElement>, source: SourceOption) => {
+  const handleMenuOpen = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    source: SourceOption,
+  ) => {
     e.preventDefault();
-    if (source === 'arxiv') {
+    if (source === "arxiv") {
       setArxivModalOpen(true);
-    } else if (source === 'reddit') {
+    } else if (source === "reddit") {
       setRedditModalOpen(true);
-    } else if (source === 'product_hunt') {
+    } else if (source === "product_hunt") {
       setProductHuntModalOpen(true);
-    } else if (source === 'y_combinator') {
+    } else if (source === "y_combinator") {
       setYCombinatorModalOpen(true);
     }
   };
@@ -117,16 +138,26 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
                   <Input
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
-                    disabled={process.env.NEXT_PUBLIC_SEARCH_DISABLED === 'true'}
-                    placeholder={process.env.NEXT_PUBLIC_SEARCH_DISABLED === 'true' ? "Backend is currently under maintenance... Check back tomorrow!" : "Search for projects..."}
+                    disabled={
+                      process.env.NEXT_PUBLIC_SEARCH_DISABLED === "true"
+                    }
+                    placeholder={
+                      process.env.NEXT_PUBLIC_SEARCH_DISABLED === "true"
+                        ? "Backend is currently under maintenance... Check back tomorrow!"
+                        : "Search for projects..."
+                    }
                     className="pl-12 pr-24 py-6 text-lg bg-zinc-50 border-zinc-200 hover:border-zinc-300 focus:border-zinc-900 transition-colors"
                   />
-
                 </div>
                 <Button
                   type="submit"
                   className="absolute right-2 top-1/2 -translate-y-1/2 bg-zinc-900 hover:bg-zinc-800 transition-colors px-6"
-                  disabled={!searchValue.trim() || selectedSources.length === 0 || isLoading || process.env.NEXT_PUBLIC_SEARCH_DISABLED === 'true'}
+                  disabled={
+                    !searchValue.trim() ||
+                    selectedSources.length === 0 ||
+                    isLoading ||
+                    process.env.NEXT_PUBLIC_SEARCH_DISABLED === "true"
+                  }
                 >
                   {isLoading ? (
                     <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
@@ -140,11 +171,13 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 {sourceOptions.map(({ value, label }) => (
-                  <div key={value}
+                  <div
+                    key={value}
                     className={`group flex items-center transition-colors duration-0
-                      ${selectedSources.includes(value)
-                        ? 'bg-zinc-900 text-white'
-                        : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                      ${
+                        selectedSources.includes(value)
+                          ? "bg-zinc-900 text-white"
+                          : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
                       } rounded-lg`}
                   >
                     <button
@@ -158,9 +191,10 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
                       <div className="pr-2 pl-1">
                         <button
                           className={`rounded-md p-1.5 transition-colors
-                            ${selectedSources.includes(value)
-                              ? 'hover:bg-zinc-800'
-                              : 'hover:bg-zinc-200'
+                            ${
+                              selectedSources.includes(value)
+                                ? "hover:bg-zinc-800"
+                                : "hover:bg-zinc-200"
                             }`}
                           disabled={!selectedSources.includes(value)}
                           onClick={(e) => handleMenuOpen(e, value)}
@@ -176,13 +210,18 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
               <div className="flex gap-3">
                 <Select
                   value={filters.daysAgo.toString()}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, daysAgo: parseInt(value) }))}
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      daysAgo: parseInt(value),
+                    }))
+                  }
                 >
                   <SelectTrigger className="w-[180px] bg-zinc-50 border-zinc-200">
                     <SelectValue placeholder="Time range" />
                   </SelectTrigger>
                   <SelectContent>
-                    {dateRangeOptions.map(option => (
+                    {dateRangeOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -192,13 +231,18 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
 
                 <Select
                   value={filters.resultsPerSource.toString()}
-                  onValueChange={(value) => setFilters(prev => ({ ...prev, resultsPerSource: parseInt(value) }))}
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      resultsPerSource: parseInt(value),
+                    }))
+                  }
                 >
                   <SelectTrigger className="w-[180px] bg-zinc-50 border-zinc-200">
                     <SelectValue placeholder="Results per source" />
                   </SelectTrigger>
                   <SelectContent>
-                    {resultCountOptions.map(option => (
+                    {resultCountOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -215,7 +259,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             onOpenChange={setArxivModalOpen}
             selectedCategories={filters.arxivCategories || []}
             onCategoriesChange={(categories) =>
-              setFilters(prev => ({ ...prev, arxivCategories: categories }))
+              setFilters((prev) => ({ ...prev, arxivCategories: categories }))
             }
           />
 
@@ -225,7 +269,7 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             onOpenChange={setRedditModalOpen}
             selectedCategories={filters.redditCategories || []}
             onCategoriesChange={(categories) =>
-              setFilters(prev => ({ ...prev, redditCategories: categories }))
+              setFilters((prev) => ({ ...prev, redditCategories: categories }))
             }
           />
 
@@ -235,7 +279,10 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             onOpenChange={setProductHuntModalOpen}
             selectedCategories={filters.productHuntCategories || []}
             onCategoriesChange={(categories) =>
-              setFilters(prev => ({ ...prev, productHuntCategories: categories }))
+              setFilters((prev) => ({
+                ...prev,
+                productHuntCategories: categories,
+              }))
             }
           />
 
@@ -245,7 +292,10 @@ export default function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             onOpenChange={setYCombinatorModalOpen}
             selectedCategories={filters.yCombinatorCategories || []}
             onCategoriesChange={(categories) =>
-              setFilters(prev => ({ ...prev, yCombinatorCategories: categories }))
+              setFilters((prev) => ({
+                ...prev,
+                yCombinatorCategories: categories,
+              }))
             }
           />
         </CardContent>

@@ -1,8 +1,8 @@
 export const formatSourceName = (source: string): string => {
   return source
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
 };
 
 export const getYCombinatorDate = (date: string): string => {
@@ -17,5 +17,5 @@ export const getYCombinatorDate = (date: string): string => {
   if (month === 6) return `S${year}`; // Summer batch (June)
   if (month === 9) return `F${year}`; // Fall batch (September)
 
-  return 'Unknown Batch'; // For any other months
+  return "Unknown Batch"; // For any other months
 };

@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Header } from '@/components/Header';
-import { ClerkProvider } from '@clerk/nextjs';
-import { Toaster } from "@/components/ui/toaster"
-import { Analytics } from '@vercel/analytics/react';
-import { FeedbackButton } from '@/components/FeedbackButton';
+import { Header } from "@/components/Header";
+import { Toaster } from "@/components/ui/toaster";
+import { Analytics } from "@vercel/analytics/react";
+import { FeedbackButton } from "@/components/FeedbackButton";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -13,7 +12,7 @@ export const metadata: Metadata = {
   title: "Forsite",
   description: "Search the future",
   icons: {
-    icon: '/favicon.svg',
+    icon: "/favicon.svg",
   },
 };
 
@@ -23,16 +22,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="en">
-        <body className={`${inter.variable} font-sans bg-white`}>
-          <Header />
-          {children}
-          <FeedbackButton />
-          <Toaster />
-          <Analytics />
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${inter.variable} font-sans bg-stone-50 flex flex-col min-h-screen`}
+        suppressHydrationWarning
+      >
+        <Header />
+        {children}
+
+        <Toaster />
+        <Analytics />
+      </body>
+    </html>
   );
 }

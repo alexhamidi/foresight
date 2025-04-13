@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useState } from "react";
 import { Button } from "./ui/button";
@@ -26,23 +26,26 @@ export function FeedbackButton() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/feedback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/feedback`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
         },
-        body: JSON.stringify(formData),
-      });
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to submit feedback');
+        throw new Error("Failed to submit feedback");
       }
 
       // Reset form and close dialog on success
       setIsOpen(false);
       setFormData({ name: "", email: "", message: "" });
     } catch (error) {
-      console.error('Error submitting feedback:', error);
+      console.error("Error submitting feedback:", error);
       // You might want to show an error message to the user here
     }
   };
@@ -51,7 +54,7 @@ export function FeedbackButton() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
-          className="fixed bottom-6 right-6 h-12 w-12 rounded-full z-[1000] dshadow-lg"
+          className="fixed bottom-4 right-4 h-12 w-12 rounded-full z-[1000] dshadow-lg"
           size="icon"
         >
           <Mail className="h-6 w-6" />
@@ -61,7 +64,8 @@ export function FeedbackButton() {
         <DialogHeader>
           <DialogTitle>Send Feedback</DialogTitle>
           <DialogDescription>
-            Report errors, suggest features, or send feedback. We appreciate your input!
+            Report errors, suggest features, or send feedback. We appreciate
+            your input!
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">

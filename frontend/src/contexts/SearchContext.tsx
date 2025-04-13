@@ -20,7 +20,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [filtersMessage, setFiltersMessage] = useState<string | null>(null);
 
   const addStatusMessage = (message: string) => {
-    setStatusMessages(prev => [...prev, message]);
+    setStatusMessages((prev) => [...prev, message]);
   };
 
   const clearMessages = () => {
@@ -30,15 +30,17 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <SearchContext.Provider value={{
-      statusMessages,
-      profilingMessage,
-      filtersMessage,
-      addStatusMessage,
-      setProfilingMessage,
-      setFiltersMessage,
-      clearMessages
-    }}>
+    <SearchContext.Provider
+      value={{
+        statusMessages,
+        profilingMessage,
+        filtersMessage,
+        addStatusMessage,
+        setProfilingMessage,
+        setFiltersMessage,
+        clearMessages,
+      }}
+    >
       {children}
     </SearchContext.Provider>
   );
@@ -47,7 +49,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 export function useSearchContext() {
   const context = useContext(SearchContext);
   if (context === undefined) {
-    throw new Error('useSearchContext must be used within a SearchProvider');
+    throw new Error("useSearchContext must be used within a SearchProvider");
   }
   return context;
 }

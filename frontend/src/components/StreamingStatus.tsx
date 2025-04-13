@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface StreamingStatusProps {
   messages: string[];
@@ -29,7 +29,7 @@ export default function StreamingStatus({ messages }: StreamingStatusProps) {
     if (currentCharIndex >= currentMessage.length) {
       // Move to next message after a short delay
       const timer = setTimeout(() => {
-        setCurrentMessageIndex(prev => prev + 1);
+        setCurrentMessageIndex((prev) => prev + 1);
         setCurrentCharIndex(0);
       }, 50);
       return () => clearTimeout(timer);
@@ -37,15 +37,18 @@ export default function StreamingStatus({ messages }: StreamingStatusProps) {
 
     // Type out current message character by character
     const timer = setTimeout(() => {
-      setDisplayedMessages(prev => {
+      setDisplayedMessages((prev) => {
         const newMessages = [...prev];
         if (currentMessageIndex >= newMessages.length) {
-          newMessages.push('');
+          newMessages.push("");
         }
-        newMessages[currentMessageIndex] = messages[currentMessageIndex].slice(0, currentCharIndex + 1);
+        newMessages[currentMessageIndex] = messages[currentMessageIndex].slice(
+          0,
+          currentCharIndex + 1,
+        );
         return newMessages;
       });
-      setCurrentCharIndex(prev => prev + 1);
+      setCurrentCharIndex((prev) => prev + 1);
     }, 20);
 
     return () => clearTimeout(timer);
@@ -54,12 +57,18 @@ export default function StreamingStatus({ messages }: StreamingStatusProps) {
   return (
     <div className="rounded-lg p-4 relative">
       <button
-        onClick={() => setIsCollapsed(prev => !prev)}
+        onClick={() => setIsCollapsed((prev) => !prev)}
         className="rounded-full transition-colors flex items-center mb-2"
       >
-        {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+        {isCollapsed ? (
+          <ChevronDown className="h-4 w-4" />
+        ) : (
+          <ChevronUp className="h-4 w-4" />
+        )}
         <span className="ml-2">
-          {messages.some(m => m.includes("Found")) ? "Finished" : "Searching..."}
+          {messages.some((m) => m.includes("Found"))
+            ? "Finished"
+            : "Searching..."}
         </span>
       </button>
 
@@ -68,9 +77,11 @@ export default function StreamingStatus({ messages }: StreamingStatusProps) {
           {displayedMessages.map((text, index) => (
             <p key={index} className="text-sm text-gray-600">
               {text}
-              {!isCollapsed && index === currentMessageIndex && currentCharIndex < messages[currentMessageIndex]?.length && (
-                <span className="animate-pulse ml-0.5">▋</span>
-              )}
+              {!isCollapsed &&
+                index === currentMessageIndex &&
+                currentCharIndex < messages[currentMessageIndex]?.length && (
+                  <span className="animate-pulse ml-0.5">▋</span>
+                )}
             </p>
           ))}
         </div>

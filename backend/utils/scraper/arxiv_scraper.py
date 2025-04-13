@@ -2,7 +2,6 @@ import arxiv
 from typing import List, Dict
 import asyncio
 from functools import lru_cache
-import time
 from datetime import datetime, timedelta
 from utils.logger import setup_logger
 

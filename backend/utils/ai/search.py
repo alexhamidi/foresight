@@ -1,25 +1,47 @@
+#========================================
+# Imports and Initialization
+#========================================
 import os
-from openai import OpenAI
-from typing import Dict, List
-import json
-from utils.logger import setup_logger
-from utils.embedding import create_embedding
-from utils.supabase import get_items
-from pydantic import BaseModel
 from google import genai
+from utils.logger import setup_logger
+from pydantic import BaseModel
+from typing import List, Dict
 
-
-
-# Initialize OpenAI client and logger
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 logger = setup_logger("ai")
 
+#========================================
+# Data Models
+#========================================
 class AnalysisResponse(BaseModel):
+    """Schema for AI analysis response.
+
+    Attributes:
+        problem_statement: Core problem being solved
+        target_users: Target audience description
+        terms: Key terms extracted from query
+    """
     problem_statement: str
     target_users: str
     terms: List[str]
 
+#========================================
+# Query Analysis Functions
+#========================================
 def analyze_query(query: str) -> Dict[str, str]:
+    """Analyze a product/project idea query using Gemini AI.
+
+    Uses Gemini to extract key information about the problem statement,
+    target users, and important terms from the query.
+
+    Args:
+        query: The product/project idea query text
+
+    Returns:
+        Dictionary containing problem statement, target users and key terms
+
+    Raises:
+        Exception: If there is an error analyzing the query
+    """
     system_prompt = """You are a product analyst who helps identify core information from product ideas.
     Extract the vital information from the prompt. Your response should be extremely concise, around 8-12 words. Focus only the specific/unique aspects and terms of the idea - for example, given a prompt like \"AI music composition tool\", focus more on the music aspects than the \"tool\" aspects."""
 
@@ -71,50 +93,3 @@ USER PROMPT:
             "original_query": query,
             "terms": []
         }
-
-def get_chat_response(message: str, items: List[dict] = None) -> dict:
-    system_prompt = """You are a helpful AI assistant that provides clear and very concise responses to user queries about software products and projects. You can use the provided sources to answer the user's query, citing them with [num], where num is the index+1 of the source in the list. Use your own knowledge of products and projects to provide additional projects not mentioned in the sources. If the user's query is not related to software products and projects, start your response with [NO_SOURCES]. """
-    try:
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": message},
-        ]
-
-        if items:
-            messages.insert(1, {"role": "user", "content": json.dumps(items)})
-
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages
-        )
-
-        content = response.choices[0].message.content
-        print(content)
-        needs_sources = not content.startswith("[NO_SOURCES]")
-
-        # Remove the [NO_SOURCES] prefix if present
-        if not needs_sources:
-            content = content[len("[NO_SOURCES]"):].strip()
-
-        return {
-            "content": content,
-            "needs_sources": needs_sources
-        }
-
-    except Exception as e:
-        error_msg = f"Failed to get chat response: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        return {
-            "content": f"I apologize, but I encountered an error: {error_msg}",
-            "needs_sources": False
-        }
-
-
-def main():
-    pass
-
-
-
-if __name__ == "__main__":
-
-    main()

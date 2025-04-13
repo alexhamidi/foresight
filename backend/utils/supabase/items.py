@@ -5,39 +5,44 @@ import logging
 from dotenv import load_dotenv
 import asyncio
 import numpy as np
-from datetime import datetime
-
-load_dotenv()
+from .init import asupabase
 
 
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_KEY")
 
-if not supabase_url or not supabase_key:
-    raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in environment variables")
-
-async def init_supabase():
-    global asupabase, supabase
-    asupabase = await acreate_client(supabase_url, supabase_key)
-    supabase = create_client(supabase_url, supabase_key)  # This one is not async
-
-asyncio.run(init_supabase())
-
-async def init_supabase():
-    global asupabase, supabase
-    if asupabase is None:
-        asupabase = await acreate_client(supabase_url, supabase_key)
-        supabase = create_client(supabase_url, supabase_key)  # This one is not async
-    return asupabase, supabase
-
-
-async def get_db_size():
-    response = await asupabase.rpc('get_total_item_count').execute()
-    return response.data
-
-
-async def add_items(items: List[dict[str, Any]], embeddings: np.ndarray, table) -> None:
+#========================================
+# Get the total number of items in the DB
+#========================================
+async def get_num_items() -> int:
+    """Get the total count of items in the database.
+    Returns:
+        int: Total number of items
+    """
     try:
+        # Initialize Supabase client if not already initialized
+        response = await asupabase.rpc('get_total_item_count').execute()
+        return response.data
+    except Exception as e:
+        logging.error(f"Failed to get database size: {e}")
+        raise
+
+
+
+
+#========================================
+# Item Insertions
+#========================================
+async def add_items(items: List[dict[str, Any]], embeddings: np.ndarray, table: str) -> None:
+    """Add or update items in the specified table with their embeddings.
+
+    Args:
+        items: List of item dictionaries containing metadata
+        embeddings: Numpy array of embeddings corresponding to items
+        table: Name of the table to insert into
+    """
+    try:
+        if len(items) != len(embeddings):
+            raise ValueError("Number of items must match number of embeddings")
+
         tasks = [
             asupabase.table(table).upsert({
                 'title': item['title'],
@@ -64,16 +69,28 @@ async def add_items(items: List[dict[str, Any]], embeddings: np.ndarray, table) 
             if hasattr(result, 'error') and result.error:
                 raise Exception(f"Error inserting item: {result.error}")
 
-        # After successful insertion, update the DB size in the app
-
-
     except Exception as e:
         logging.error(f"Error adding items to Supabase: {str(e)}")
         raise
 
 
 
+#========================================
+# Item Fetching from a single source - for parallelism
+#========================================
 async def fetch_items_from_source(source: str, embedding: np.ndarray, num_results: int, recency: int, category_list: List[str]) -> List[dict[str, Any]]:
+    """Fetch items from a specific source matching the embedding and criteria.
+
+    Args:
+        source: Source identifier
+        embedding: Query embedding vector
+        num_results: Maximum number of results to return
+        recency: Time window for recent items
+        category_list: List of categories to filter by
+
+    Returns:
+        List of matching items
+    """
     try:
         payload = {
             'source_param': source,
@@ -82,14 +99,39 @@ async def fetch_items_from_source(source: str, embedding: np.ndarray, num_result
             'num_results': num_results,
             'recency': recency
         }
-        # Async RPC call using asupabase
         response = await asupabase.rpc('get_items_by_source', payload).execute()
         return response.data
     except Exception as e:
         logging.error(f"Error fetching from {source}: {str(e)}")
         return []
 
-async def get_items(sources: List[str], embedding: np.ndarray, num_results: int, recency: int, reddit_category_list: List[str], product_hunt_category_list: List[str], y_combinator_category_list: List[str]) -> List[dict[str, Any]]:
+
+#========================================
+# Primary function for fetching items
+#========================================
+async def get_items(
+    sources: List[str],
+    embedding: np.ndarray,
+    num_results: int,
+    recency: int,
+    reddit_category_list: List[str],
+    product_hunt_category_list: List[str],
+    y_combinator_category_list: List[str]
+) -> List[dict[str, Any]]:
+    """Get items from multiple sources based on embedding similarity and filters.
+
+    Args:
+        sources: List of source identifiers to query
+        embedding: Query embedding vector
+        num_results: Maximum total results to return
+        recency: Time window for recent items
+        reddit_category_list: Categories to filter Reddit items
+        product_hunt_category_list: Categories to filter Product Hunt items
+        y_combinator_category_list: Categories to filter Y Combinator items
+
+    Returns:
+        Combined list of matching items across all sources
+    """
     try:
         if embedding is None or len(embedding) == 0:
             raise ValueError("Empty embedding vector")
@@ -125,27 +167,9 @@ async def get_items(sources: List[str], embedding: np.ndarray, num_results: int,
             else:
                 logging.warning(f"Task returned an error: {result}")
 
-        return combined_results
+        return combined_results[:num_results]
 
     except Exception as e:
         logging.error(f"Error performing vector search: {str(e)}")
         raise
-
-
-async def post_feedback(message: str, name: str = "", email: str = "") -> None:
-    """Store user feedback in the feedback table"""
-    try:
-        await asupabase.table('feedback').insert({
-            'message': message,
-            'name': name,
-            'email': email,
-        }).execute()
-        logging.info(f"Successfully stored feedback from {name if name else 'anonymous'}")
-    except Exception as e:
-        logging.error(f"Error storing feedback: {str(e)}")
-        raise
-
-
-
-
 

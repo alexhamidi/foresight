@@ -76,16 +76,16 @@ module.exports = {
         },
         scroll: {
           "0%": { transform: "translateX(0)" },
-          "100%": { transform: "translateX(-33.33%)" }
-        }
+          "100%": { transform: "translateX(-33.33%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "gradient-x": "gradient-x 15s ease infinite",
         "gradient-y": "gradient-y 15s ease infinite",
-        "scroll": "scroll 60s linear infinite",
-        "pause": "none",
+        scroll: "scroll 60s linear infinite",
+        pause: "none",
       },
       backdropBlur: {
         xs: "2px",
@@ -93,5 +93,4 @@ module.exports = {
     },
   },
   plugins: [require("tailwindcss-animate")],
-}
-
+};

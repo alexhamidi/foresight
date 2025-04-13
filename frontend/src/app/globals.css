@@ -90,7 +90,6 @@
   }
 }
 
-
 @font-face {
   font-family: "Roobert";
   src: url("/fonts/roobert/RoobertTRIAL-Light-BF67243fd502239.otf")
@@ -197,11 +196,23 @@
 
 /* Apply global font */
 body {
-  font-family: "Roobert", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    "Roobert",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 html {
-  font-family: "Roobert", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    "Roobert",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
 }

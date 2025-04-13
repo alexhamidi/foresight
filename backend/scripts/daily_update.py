@@ -5,13 +5,15 @@ from datetime import datetime
 import schedule
 import time
 
+from utils.supabase import notes
+
 # Add the project root directory to Python path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
 # Now import after adding to path
-from utils import supabase, embedding
-from utils.scraper import hackernews_scraper, reddit_scraper, product_hunt_scraper, arxiv_scraper, ycombinator_scraper
+from utils import embedding
+from utils.scraper import hackernews_scraper, reddit_scraper, product_hunt_scraper, ycombinator_scraper
 import asyncio
 from utils.logger import setup_logger
 
@@ -36,7 +38,7 @@ async def update_task():
         yc_items = await ycombinator_scraper.scrape_yc_companies(limit, num_scrolls=5, url="https://www.ycombinator.com/companies?batch=X25")
         logger.info(f"Number of Y Combinator items: {len(yc_items)}")
         embeddings = await embedding.get_item_embeddings(yc_items)
-        await supabase.add_items(yc_items, embeddings, "yc_items")
+        await notes.add_items(yc_items, embeddings, "yc_items")
         logger.info(f"Added {len(yc_items)} Y Combinator items")
 
         # Get HN items from current day
@@ -44,7 +46,7 @@ async def update_task():
         hn_items = filter_today(year, month, day, hackernews_scraper.get_hacker_news_posts(limit=limit))
         logger.info(f"Number of Hacker News items: {len(hn_items)}")
         embeddings = await embedding.get_item_embeddings(hn_items)
-        await supabase.add_items(hn_items, embeddings, "hn_items")
+        await notes.add_items(hn_items, embeddings, "hn_items")
         logger.info(f"Added {len(hn_items)} Hacker News items")
 
         # Get reddit events from current day
@@ -57,7 +59,7 @@ async def update_task():
         re_items = filter_today(year, month, day, re_items)
         logger.info(f"Number of Reddit items: {len(re_items)}")
         embeddings = await embedding.get_item_embeddings(re_items)
-        await supabase.add_items(re_items, embeddings, "re_items")
+        await notes.add_items(re_items, embeddings, "re_items")
         logger.info(f"Added {len(re_items)} Reddit items")
 
 
@@ -66,7 +68,7 @@ async def update_task():
             daily_items = await product_hunt_scraper.scrape_product_hunt_daily(year, month, day, num_scrolls=5)
             if daily_items:
                 embeddings = await embedding.get_item_embeddings(daily_items)
-                await supabase.add_items(daily_items, embeddings, "ph_items")
+                await notes.add_items(daily_items, embeddings, "ph_items")
                 logger.info(f"Added {len(daily_items)} items for {year}-{month:02d}-{day:02d}")
             else:
                 logger.warning(f"No items found for {year}-{month:02d}-{day:02d}")
