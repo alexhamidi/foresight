@@ -6,13 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from dotenv import load_dotenv
 import os
-from utils.ai import chat as cai
-from utils.ai import search as sai
+from utils.chat import normal as normal_chat
+from utils.chat import ai_search as ai_search_chat
+from utils.search import simple as simple_search
 from utils.supabase import init
-from utils.supabase import notes as nsup
-from utils.supabase import feedback as fsup
-from utils.supabase import items as isup
-from utils.supabase import profiles as psup
+from utils.supabase import ideas
+from utils.supabase import feedback
+from utils.supabase import items
+from utils.supabase import profiles
 from utils.logger import setup_logger
 from utils import embedding as emb, arxiv
 from fastapi.responses import StreamingResponse
@@ -25,6 +26,8 @@ from scripts.daily_update import update_task
 from typing import Optional
 from pydantic import BaseModel
 import stripe
+from utils.search import main as search_main
+from utils.search import enrich
 
 
 # =======================================================================#
@@ -63,7 +66,7 @@ if not FRONTEND_URL:
 async def lifespan(app: FastAPI):
     global CURR_DB_SIZE, scheduler_task
     await init.init_supabase()
-    CURR_DB_SIZE = await isup.get_num_items()
+    CURR_DB_SIZE = await items.get_num_items()
     logger.info(f"Initialized DB size: {CURR_DB_SIZE}")
 
     # Start the scheduler in a background task
@@ -105,11 +108,11 @@ app.add_middleware(
 # AUTH UTILITIES
 # =======================================================================#
 
-class NoteCreate(BaseModel):
+class IdeaCreate(BaseModel):
     name: str
     content: str
 
-class NoteUpdate(BaseModel):
+class IdeaUpdate(BaseModel):
     name: Optional[str] = None
     content: Optional[str] = None
     customers: Optional[str] = None
@@ -171,16 +174,16 @@ def get_frontend_url():
 # Feedback Endpoints
 # =======================================================================#
 @app.post("/api/feedback")
-async def post_feedback(feedback: dict):
+async def post_feedback(feedback_info: dict):
     try:
-        name = feedback.get("name", "")
-        email = feedback.get("email", "")
-        message = feedback.get("message", "")
+        name = feedback_info.get("name", "")
+        email = feedback_info.get("email", "")
+        message = feedback_info.get("message", "")
 
         if not message:
             raise HTTPException(status_code=400, detail="Message is required")
 
-        await fsup.post_feedback(message=message, name=name, email=email)
+        await feedback.post_feedback(message=message, name=name, email=email)
         return {"status": "success", "message": "Feedback received"}
     except Exception as e:
         logger.error(f"Error posting feedback: {str(e)}")
@@ -191,7 +194,7 @@ async def post_feedback(feedback: dict):
 # Search Endpoints
 # =======================================================================#
 @app.get("/api/search")
-async def search(
+async def conduct_full_search(
     query: str = Query(...),
     valid_sources: str = Query(...),
     recency: int = Query(...),
@@ -209,72 +212,53 @@ async def search(
     product_hunt_category_list = product_hunt_categories.split(',') if product_hunt_categories else []
     y_combinator_category_list = ycombinator_categories.split(',') if ycombinator_categories else []
 
-    # Log category filters if present
-    if any([arxiv_category_list, reddit_category_list, product_hunt_category_list, y_combinator_category_list]):
-        logger.info("Category filters applied - " +
-                   (f"arXiv: {arxiv_category_list}, " if arxiv_category_list else "") +
-                   (f"Reddit: {reddit_category_list}, " if reddit_category_list else "") +
-                   (f"Product Hunt: {product_hunt_category_list}, " if product_hunt_category_list else "") +
-                   (f"Y Combinator: {y_combinator_category_list}" if y_combinator_category_list else ""))
-
     async def event_generator():
         try:
             yield ysm("status", "Analyzing your search query...")
 
-            ai_analysis = sai.analyze_query(query)
+            # Get AI analysis of query
+            ai_analysis = enrich.analyze_query(query)
             logger.debug(f"AI Analysis results - Problem Statement: {ai_analysis.get('problem_statement')}, Target Users: {ai_analysis.get('target_users')}")
 
             yield ysm("status", f"Problem Statement: {str(ai_analysis.get('problem_statement', ''))}")
             yield ysm("status", f"Target Users: {str(ai_analysis.get('target_users', ''))}")
 
-            enriched_query = f"{query} {ai_analysis.get('problem_statement', '')} {ai_analysis.get('target_users', '')} {', '.join(str(t) for t in ai_analysis.get('terms', []))}"
-            # enriched_query = f"I created a {query}"
-
             if ai_analysis.get('terms'):
                 yield ysm("status", f"Applying Filters: {', '.join(str(t) for t in ai_analysis['terms'])}")
 
             sources = valid_sources.split(",")
-            query_embedding = await emb.create_embedding(enriched_query)
-            items = []
+
+            # Enrich query with AI analysis
+            enriched_query = f"{query} {ai_analysis.get('problem_statement', '')} {ai_analysis.get('target_users', '')} {', '.join(str(t) for t in ai_analysis.get('terms', []))}"
 
             if "arxiv" in sources and len(sources) == 1:
                 yield ysm("status", "Searching in a database of 100000+ arXiv articles")
             else:
                 yield ysm("status", f"Searching in a database of {CURR_DB_SIZE} items{' and 100000+ arXiv articles' if 'arxiv' in sources else ''}")
 
-            if set(sources) - {"arxiv"}:
-                items = await isup.get_items(sources, query_embedding, num_results, recency,
-                                reddit_category_list, product_hunt_category_list, y_combinator_category_list)
-                logger.debug(f"Retrieved {len(items)} items from Supabase sources")
+            # Get search results using the helper function
+            search_results = await search_main.get_search_results(
+                sources,
+                query,
+                enriched_query,
+                num_results,
+                recency,
+                reddit_category_list,
+                product_hunt_category_list,
+                y_combinator_category_list,
+                arxiv_category_list
+            )
 
-            if "arxiv" in sources:
-                arxiv_items = await arxiv.get_arxiv_items(query, query_embedding,
-                                                        arxiv_category_list, num_results, recency)
-                items.extend(arxiv_items)
-                logger.debug(f"Retrieved {len(arxiv_items)} items from arXiv")
+            yield ysm("status", f"Found {len(search_results)} matching results")
+            logger.info(f"Search completed - Found {len(search_results)} total results")
 
-            yield ysm("status", f"Found {len(items)} matching results")
-            logger.info(f"Search completed - Found {len(items)} total results")
+            # Filter and clean results using the helper function
+            cleaned_results = search_main.filter_results(search_results, num_results)
 
-            # Filter by similarity threshold
-            items = [item for item in items if item['similarity'] >= SIMILARITY_THRESHOLD]
-
-            items.sort(key=lambda x: x['similarity'], reverse=True)
-            results = items[:num_results]
-            yield ysm("status", f"Filtered to {len(results)} best results")
-
-            cleaned_results = []
-            for item in results:
-                cleaned_item = {}
-                for k, v in item.items():
-                    if isinstance(v, (int, float, bool, list, dict)):
-                        cleaned_item[k] = v
-                    else:
-                        cleaned_item[k] = str(v)
-                cleaned_results.append(cleaned_item)
-
+            yield ysm("status", f"Filtered to {len(cleaned_results)} best results")
             yield ysm("results", cleaned_results)
-            logger.info(f"Successfully sent {len(cleaned_results)} results to client")
+
+            logger.info(f"Successfully processed {len(cleaned_results)} results")
 
         except Exception as e:
             error_msg = f"Search error: {str(e)}"
@@ -290,59 +274,59 @@ async def search(
 # NOTE ENDPOINTS
 # =======================================================================#
 
-@app.get("/api/notes/{note_id}")
-async def get_note(note_id: str, user_id: str = Depends(get_current_user)):
-    print(f"Getting note: {note_id} for user: {user_id}")
-    """Get a specific note for the authenticated user"""
+@app.get("/api/ideas/{idea_id}")
+async def get_idea(idea_id: str, user_id: str = Depends(get_current_user)):
+    print(f"Getting idea: {idea_id} for user: {user_id}")
+    """Get a specific idea for the authenticated user"""
     try:
-        note = await nsup.get_user_note(note_id, user_id)
-        return {"note": note}
+        idea = await ideas.get_user_idea(idea_id, user_id)
+        return {"idea": idea}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 
-@app.get("/api/notes")
-async def get_notes(user_id: str = Depends(get_current_user)):
-    print(f"Getting notes for user: {user_id}")
-    """Get all notes for the authenticated user"""
+@app.get("/api/ideas")
+async def get_ideas(user_id: str = Depends(get_current_user)):
+    print(f"Getting ideas for user: {user_id}")
+    """Get all ideas for the authenticated user"""
     try:
-        notes = await nsup.get_user_notes(user_id)
-        return {"notes": notes}
+        ideas_list = await ideas.get_user_ideas(user_id)
+        return {"ideas": ideas_list}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/notes")
-async def create_note(note: NoteCreate, user_id: str = Depends(get_current_user)):
-    """Create a new note for the authenticated user"""
+@app.post("/api/ideas")
+async def create_idea(idea: IdeaCreate, user_id: str = Depends(get_current_user)):
+    """Create a new idea for the authenticated user"""
     try:
-        created_note = await nsup.create_note(user_id, note.name, note.content)
-        return created_note
+        created_idea = await ideas.create_idea(user_id, idea.name, idea.content)
+        return created_idea
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.put("/api/notes/{note_id}")
-async def update_note(note_id: str, note: NoteUpdate, user_id: str = Depends(get_current_user)):
-    """Update a note if it belongs to the authenticated user"""
-    print("received update note request")
+@app.put("/api/ideas/{idea_id}")
+async def update_idea(idea_id: str, idea: IdeaUpdate, user_id: str = Depends(get_current_user)):
+    """Update a idea if it belongs to the authenticated user"""
+    print("received update idea request")
     try:
-        updates = note.dict(exclude_unset=True)
+        updates = idea.dict(exclude_unset=True)
         if not updates:
             raise HTTPException(status_code=400, detail="No valid update fields provided")
 
-        updated_note = await nsup.update_note(note_id, user_id, updates)
-        return updated_note
+        updated_idea = await ideas.update_idea(idea_id, user_id, updates)
+        return updated_idea
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.delete("/api/notes/{note_id}")
-async def delete_note(note_id: str, user_id: str = Depends(get_current_user)):
-    """Delete a note if it belongs to the authenticated user"""
+@app.delete("/api/ideas/{idea_id}")
+async def delete_idea(idea_id: str, user_id: str = Depends(get_current_user)):
+    """Delete a idea if it belongs to the authenticated user"""
     try:
-        await nsup.delete_note(note_id, user_id)
-        return {"status": "success", "message": "Note deleted successfully"}
+        await ideas.delete_idea(idea_id, user_id)
+        return {"status": "success", "message": "Idea deleted successfully"}
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
@@ -355,32 +339,63 @@ async def delete_note(note_id: str, user_id: str = Depends(get_current_user)):
 @app.post("/api/chat")
 async def chat(request: dict = Body(...), user_id: str = Depends(get_current_user)):
     try:
+        print(request)
 
-        note_id = request.get("note_id")
+        idea_id = request.get("idea_id")
         prompt = request.get("prompt")
-        idea = request.get("idea")
+        idea_content = request.get("idea_content")
+        idea_name = request.get("idea_name")
         chat_context = request.get("chat_context")
         chat_mode = request.get("chat_mode")
+        editing_active = request.get("editing_active")
+
 
         if not prompt:
             raise HTTPException(status_code=400, detail="message content is required")
 
-        ai_response = cai.get_normal_idea_chat(chat_context, idea, prompt) if chat_mode == "normal" \
-                 else (await cai.get_search_idea_chat(chat_context, idea, prompt)) if chat_mode == "search" \
-                 else (await cai.get_agent_idea_chat(chat_context, idea, prompt))# if chat_mode == "agent"
+        comp_str = f"NAME: {idea_name}\nCONTENT: {idea_content}"
 
-        await nsup.update_messages(user_id, note_id, prompt, ai_response)
+        if chat_mode in ["ai search", "agent", "normal"]:
+            functions = {
+                "normal": normal_chat.get_normal_chat,
+                "ai search": ai_search_chat.get_ai_search_chat,
+                "agent": ai_search_chat.get_ai_search_chat,
+            }
 
-        return {"message": ai_response}
+            ai_response, edits = await functions[chat_mode](chat_context, idea_name, idea_content, prompt, editing_active)
+
+            print("ai_response", ai_response)
+            print("edits", edits)
+
+            await ideas.update_messages(user_id, idea_id, prompt, ai_response)
+
+            return {"message": ai_response, "edits": edits}
+        else:
+
+            sources = request.get("valid_sources")
+            print("sources", sources)
+            recency = request.get("recency")
+            num_results = request.get("num_results")
+            # sources = valid_sources.split(",")
+
+            items = await search_main.get_search_results(
+                sources,
+                prompt,
+                prompt,
+                num_results,
+                recency,
+            )
+            return {"message": "Search completed", "items": items[:3]}
+
     except Exception as e:
         logger.error(f"Error in chat: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.delete("/api/chat/{note_id}")
-async def delete_chats(note_id: str, user_id: str = Depends(get_current_user)):
-    """Delete all chats for a specific note"""
+@app.delete("/api/chat/{idea_id}")
+async def delete_chats(idea_id: str, user_id: str = Depends(get_current_user)):
+    """Delete all chats for a specific idea"""
     try:
-        await nsup.delete_chats(user_id, note_id)
+        await ideas.delete_chats(user_id, idea_id)
         return {"status": "success", "message": "Chat deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -392,7 +407,7 @@ async def delete_chats(note_id: str, user_id: str = Depends(get_current_user)):
 async def get_user_plan(user_id: str = Depends(get_current_user)):
     """Get the user's current plan and info"""
     try:
-        plan_info = await psup.get_plan_info(user_id)
+        plan_info = await profiles.get_plan_info(user_id)
         return {"plan_info": plan_info}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -462,13 +477,13 @@ async def stripe_webhook(request: Request):
             session = event['data']['object']
             # Update user's subscription status in your database
             user_id = session.client_reference_id
-            await psup.update_user_subscription(user_id, 'PRO')
+            await profiles.update_user_subscription(user_id, 'PRO')
 
         elif event['type'] == 'customer.subscription.deleted':
             subscription = event['data']['object']
             # Handle subscription cancellation
             user_id = subscription.client_reference_id
-            await psup.update_user_subscription(user_id, 'FREE')
+            await profiles.update_user_subscription(user_id, 'FREE')
 
         return {"status": "success"}
     except Exception as e:

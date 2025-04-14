@@ -1,60 +1,69 @@
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Plus, Trash, Pencil, Lightbulb } from "lucide-react";
-import { Note } from "@/app/interfaces";
+import { Idea } from "@/interfaces";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Dispatch, SetStateAction } from "react";
+import IdeaSectionNav from "./IdeaSectionNav";
 
 interface IdeaSidebarProps {
-  notes: Note[];
+  ideas: Idea[];
   isSidebarOpen: boolean;
   setIsSidebarOpen: Dispatch<SetStateAction<boolean>>;
-  currentNoteId: string | null;
+  currentIdeaId: string | null;
   selectedSection: string | null;
-  expandedNotes: { [key: string]: boolean };
-  setExpandedNotes: Dispatch<SetStateAction<{ [key: string]: boolean }>>;
-  createNewNote: () => void;
-  deleteNote: (noteId: string) => void;
-  handleRename: (noteId: string) => void;
+  expandedIdeas: { [key: string]: boolean };
+  setExpandedIdeas: Dispatch<SetStateAction<{ [key: string]: boolean }>>;
+  createNewIdea: () => void;
+  deleteIdea: (ideaId: string) => void;
+  handleRename: (ideaId: string) => void;
   isRenaming: boolean;
-  renamingNoteId: string | null;
+  renamingIdeaId: string | null;
   tempName: string;
   setTempName: Dispatch<SetStateAction<string>>;
-  startRenaming: (note: Note) => void;
+  startRenaming: (idea: Idea) => void;
 }
 
 export default function IdeaSidebar({
-  notes,
+  ideas,
   isSidebarOpen,
   setIsSidebarOpen,
-  currentNoteId,
+  currentIdeaId,
   selectedSection,
-  expandedNotes,
-  setExpandedNotes,
-  createNewNote,
-  deleteNote,
+  expandedIdeas,
+  setExpandedIdeas,
+  createNewIdea,
+  deleteIdea,
   handleRename,
   isRenaming,
-  renamingNoteId,
+  renamingIdeaId,
   tempName,
   setTempName,
   startRenaming,
 }: IdeaSidebarProps) {
   const router = useRouter();
 
+  const handleIdeaClick = (ideaId: string) => {
+    router.push(`/ideas/${ideaId}`);
+    const event = new CustomEvent('sectionChange', {
+      detail: { section: 'idea', ideaId }
+    });
+    window.dispatchEvent(event);
+  };
+
   return (
     <>
       <div
         className={`relative z-10 bg-white/30 border-t border-r border-zinc-300 backdrop-blur-xs transition-all duration-300 ${
-          !isSidebarOpen ? "w-0" : `w-64 ${currentNoteId === "notes" ? "rounded-tr-xl" : ""}`
+          !isSidebarOpen ? "w-0" : `w-64 ${currentIdeaId === "ideas" ? "rounded-tr-xl" : ""}`
         }`}
       >
         {isSidebarOpen && (
           <div className="h-full flex flex-col">
-            <div className="flex items-center justify-between m-4">
+            <div className="flex items-center justify-between mx-4 my-2">
               <h2 className="text-lg font-semibold">Ideas</h2>
               <Button
-                onClick={createNewNote}
+                onClick={createNewIdea}
                 size="icon"
                 variant="ghost"
                 className="hover:bg-transparent text-zinc-500 hover:text-zinc-900"
@@ -62,33 +71,28 @@ export default function IdeaSidebar({
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex-1 overflow-y-auto">
-              {notes.map((note) => (
-                <div key={note.id}>
+            <div className="flex-1 overflow-y-auto border-t">
+              {ideas.map((idea) => (
+                <div key={idea.id}>
                   <Link
-                    href={`/notes/${note.id}`}
+                    href={`/ideas/${idea.id}`}
                     onClick={(e) => {
                       e.preventDefault();
-                      router.push(`/notes/${note.id}`);
-
-                      const event = new CustomEvent('sectionChange', {
-                        detail: { section: 'idea', noteId: note.id }
-                      });
-                      window.dispatchEvent(event);
+                      handleIdeaClick(idea.id);
                     }}
-                    className={`flex items-center justify-between px-3 py-1.5 m-1  hover:bg-zinc-200/60  text-sm rounded-lg cursor-pointer  ${
-                      currentNoteId === note.id
-                        ? ` mb-0 ${selectedSection === 'idea' ? 'font-bold mb-0' : ''}`
+                    className={`flex items-center justify-between px-3 py-2 m-1 hover:bg-zinc-300/40 text-sm rounded-lg cursor-pointer ${
+                      currentIdeaId === idea.id
+                        ? `mb-0 ${selectedSection === 'idea' ? 'font-bold mb-0' : ''}`
                         : ""
                     }`}
                   >
-                    {isRenaming && renamingNoteId === note.id ? (
+                    {isRenaming && renamingIdeaId === idea.id ? (
                       <input
                         value={tempName}
                         onChange={(e) => setTempName(e.target.value)}
-                        onBlur={() => handleRename(note.id)}
-                        onKeyDown={(e) => e.key === "Enter" && handleRename(note.id)}
-                        className="p-0 bg-transparent border-none shadow-none outline-none"
+                        onBlur={() => handleRename(idea.id)}
+                        onKeyDown={(e) => e.key === "Enter" && handleRename(idea.id)}
+                        className="pl-5 bg-transparent border-none shadow-none outline-none"
                         autoFocus
                         onClick={(e) => e.preventDefault()}
                       />
@@ -96,7 +100,7 @@ export default function IdeaSidebar({
                       <>
                         <div className="flex items-center gap-1">
                           <Lightbulb className="h-4 w-4 opacity-60" />
-                          <span className="truncate">{note.name}</span>
+                          <span className="truncate">{idea.name}</span>
                         </div>
 
                         <div className="flex">
@@ -104,7 +108,7 @@ export default function IdeaSidebar({
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              startRenaming(note);
+                              startRenaming(idea);
                             }}
                             className="opacity-60 pr-1 hover:opacity-100 hover:bg-transparent"
                           >
@@ -114,7 +118,7 @@ export default function IdeaSidebar({
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              deleteNote(note.id);
+                              deleteIdea(idea.id);
                             }}
                             className="opacity-60 px-2 hover:opacity-100 hover:bg-transparent pr-0"
                           >
@@ -124,12 +128,12 @@ export default function IdeaSidebar({
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              setExpandedNotes((prev) => {
+                              setExpandedIdeas((prev) => {
                                 const newState: Record<string, boolean> = {};
                                 Object.keys(prev).forEach(
                                   (key) => (newState[key] = false)
                                 );
-                                newState[note.id] = !prev[note.id];
+                                newState[idea.id] = !prev[idea.id];
                                 return newState;
                               });
                             }}
@@ -137,7 +141,7 @@ export default function IdeaSidebar({
                           >
                             <ChevronRight
                               className={`h-4 w-4 transform transition-transform ${
-                                expandedNotes[note.id] ? "rotate-90" : ""
+                                expandedIdeas[idea.id] ? "rotate-90" : ""
                               }`}
                             />
                           </button>
@@ -145,60 +149,12 @@ export default function IdeaSidebar({
                       </>
                     )}
                   </Link>
-                  {expandedNotes[note.id] && (
-                    <div className="text-sm m-1 mt-0 ">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          router.push(`/notes/${note.id}`);
-                          const event = new CustomEvent('sectionChange', {
-                            detail: { section: 'customers', noteId: note.id }
-                          });
-                          window.dispatchEvent(event);
-                        }}
-                        className={`flex items-center pr-3 pl-8 py-1.5  w-full text-left rounded-lg cursor-pointer hover:bg-zinc-200/60 ${
-                          currentNoteId === note.id && selectedSection === 'customers'
-                            ? "font-bold"
-                            : ""
-                        }`}
-                      >
-                        customers
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          router.push(`/notes/${note.id}`);
-                          const event = new CustomEvent('sectionChange', {
-                            detail: { section: 'competitors', noteId: note.id }
-                          });
-                          window.dispatchEvent(event);
-                        }}
-                        className={`flex items-center pr-3 pl-8  py-1.5 w-full text-left rounded-lg cursor-pointer hover:bg-zinc-200/60 ${
-                          currentNoteId === note.id && selectedSection === 'competitors'
-                            ? "font-bold"
-                            : ""
-                        }`}
-                      >
-                        competitors
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          router.push(`/notes/${note.id}`);
-                          const event = new CustomEvent('sectionChange', {
-                            detail: { section: 'diagram', noteId: note.id }
-                          });
-                          window.dispatchEvent(event);
-                        }}
-                        className={`flex items-center pr-3 pl-8  py-1.5 w-full text-left rounded-lg cursor-pointer hover:bg-zinc-200/60 ${
-                          currentNoteId === note.id && selectedSection === 'diagram'
-                            ? "font-bold"
-                            : ""
-                        }`}
-                      >
-                        diagram
-                      </button>
-                    </div>
+                  {expandedIdeas[idea.id] && (
+                    <IdeaSectionNav
+                      ideaId={idea.id}
+                      currentIdeaId={currentIdeaId}
+                      selectedSection={selectedSection}
+                    />
                   )}
                 </div>
               ))}

@@ -67,7 +67,7 @@ export default function SettingsPage() {
 
   if (isLoading || !planInfo) {
     return (
-      <div className="container mx-auto py-8 px-4 max-w-3xl">
+      <div className="container mx-auto py-8 px-4 max-w-3xl z-10">
         <h1 className="text-3xl font-bold mb-8">Settings</h1>
         <div className="animate-pulse">
           <div className="h-32 bg-gray-200 rounded-lg mb-4"></div>
@@ -79,7 +79,7 @@ export default function SettingsPage() {
 
   const planLimits = plan_limits[planInfo?.payment_plan as keyof typeof plan_limits]
   return (
-    <div className="container mx-auto py-8 px-4 max-w-3xl">
+    <div className="container mx-auto py-8 px-4 max-w-3xl z-10">
       <h1 className="text-3xl font-bold mb-8">Settings</h1>
 
       <div className="space-y-6">
@@ -111,7 +111,7 @@ export default function SettingsPage() {
               <Button
                 variant="ghost"
                 onClick={() => router.push('/pro')}
-                className="cursor-pointer p-0 m-0 text-xs z-10"
+                className="cursor-pointer p-0 m-0 text-xs z-10 hover:bg-transparent text-zinc-500 hover:text-zinc-700"
               >
                 Upgrade →
               </Button>

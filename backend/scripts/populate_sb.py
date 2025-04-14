@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 import json
 
-from utils.supabase import notes
+from utils.supabase import ideas
 
 # Add the project root directory to Python path
 project_root = Path(__file__).parent.parent
@@ -76,7 +76,7 @@ async def main():
                 daily_items = await product_hunt_scraper.scrape_product_hunt_daily(year, month, day, num_scrolls=5)
                 if daily_items:
                     embeddings = await embedding.get_item_embeddings(daily_items)
-                    await notes.add_items(daily_items, embeddings, "ph_items")
+                    await ideas.add_items(daily_items, embeddings, "ph_items")
                     logger.info(f"Added {len(daily_items)} items for {year}-{month:02d}-{day:02d}")
                 else:
                     logger.warning(f"No items found for {year}-{month:02d}-{day:02d}")

@@ -107,9 +107,29 @@ async def fetch_items_from_source(source: str, embedding: np.ndarray, num_result
 
 
 #========================================
+# Primary function for fetching with embeddings
+#========================================
+
+
+
+async def keyword_search(
+    sources: List[str],
+    keywords: List[str],
+    num_results: int,
+    recency: int,
+    reddit_category_list: List[str],
+    product_hunt_category_list: List[str],
+    y_combinator_category_list: List[str]
+) -> List[dict[str, Any]]:
+    """Collect num_results items with all of the given keywords present in the string 'f{item.name} {item.description} {' '.join(item.categories)}'"""
+
+
+
+
+#========================================
 # Primary function for fetching items
 #========================================
-async def get_items(
+async def embedding_search(
     sources: List[str],
     embedding: np.ndarray,
     num_results: int,

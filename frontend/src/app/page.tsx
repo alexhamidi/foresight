@@ -1,16 +1,16 @@
 "use client";
 
 import { signInAction, signInWithGoogleAction } from "@/app/actions";
-import DynamicGrid from "@/components/DynamicGrid";
+import DynamicGrid from "@/components/background/DynamicGrid";
 import { Suspense } from "react";
-import SearchForm from "@/components/SearchForm";
-import StreamingStatus from "@/components/StreamingStatus";
-import SearchResults from "@/components/SearchResults";
-import FeatureBadges from "@/components/FeatureBadges";
+import SearchForm from "@/components/search/SearchForm";
+import StreamingStatus from "@/components/search/StreamingStatus";
+import SearchResults from "@/components/search/SearchResults";
+import FeatureBadges from "@/components/search/FeatureBadges";
 import { useState } from "react";
-import { Item, SearchFilters } from "@/interfaces";
+import { Item, SearchFilters, SearchFiltersMain } from "@/interfaces";
 import { Message } from "@/components/ui/form-message";
-import { FeedbackButton } from "@/components/FeedbackButton";
+import { FeedbackButton } from "@/components/feedback/FeedbackButton";
 
 export default function Login(props: { searchParams: Message }) {
   const [items, setItems] = useState<Item[] | null>(null);
@@ -21,7 +21,7 @@ export default function Login(props: { searchParams: Message }) {
   const handleSearch = async (
     query: string,
     sources: string[],
-    filters: SearchFilters,
+    filters: SearchFiltersMain,
   ) => {
     setIsLoading(true);
     setError(null);

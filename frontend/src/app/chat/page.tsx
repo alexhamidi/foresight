@@ -4,11 +4,11 @@ import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowUp, ChevronRight, ChevronDown } from "lucide-react";
-import DynamicGrid from "@/components/DynamicGrid";
+import DynamicGrid from "@/components/background/DynamicGrid";
 import Link from "next/link";
 import ChatHistoryOverlay from "@/app/components/ChatHistoryOverlay";
 import axios from "axios";
-import MarkdownMessage from "@/components/MarkdownMessage";
+import MarkdownMessage from "@/components/chat/MarkdownMessage";
 import { Item } from "@/interfaces";
 import { v4 as uuidv4 } from "uuid";
 

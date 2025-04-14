@@ -132,7 +132,7 @@ export const categories = {
     { value: "Spreadsheets", label: "Spreadsheets" },
     { value: "Photo & Video", label: "Photo & Video" },
     { value: "Languages", label: "Languages" },
-    { value: "Notes", label: "Notes" },
+    { value: "Ideas", label: "Ideas" },
     { value: "iOS", label: "iOS" },
     { value: "News", label: "News" },
     { value: "Web App", label: "Web App" },

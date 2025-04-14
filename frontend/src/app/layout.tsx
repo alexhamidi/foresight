@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/Header";
+import { Header } from "@/components/header/Header";
 import { Toaster } from "@/components/ui/toaster";
 import { Analytics } from "@vercel/analytics/react";
-import { FeedbackButton } from "@/components/FeedbackButton";
-import DynamicGrid from "@/components/DynamicGrid";
+import { FeedbackButton } from "@/components/feedback/FeedbackButton";
+import DynamicGrid from "@/components/background/DynamicGrid";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
