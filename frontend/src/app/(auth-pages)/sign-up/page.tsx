@@ -1,15 +1,33 @@
 import { signInWithGoogleAction, signUpAction } from "@/app/actions";
-import { FormMessage, Message } from "@/components/ui/form-message";
+import { FormMessage } from "@/components/ui/form-message";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import DynamicGrid from "@/components/DynamicGrid";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
+
+type SearchParams = {
+  returnTo?: string;
+  error?: string;
+  success?: string;
+  message?: string;
+};
 
 export default async function Signup(props: {
-  searchParams: Promise<Message>;
+  searchParams: Promise<SearchParams>;
 }) {
   const searchParams = await props.searchParams;
+  const returnTo = searchParams.returnTo;
+
+  // Convert search params to FormMessage format
+  const message = searchParams.error
+    ? { error: searchParams.error }
+    : searchParams.success
+    ? { success: searchParams.success }
+    : searchParams.message
+    ? { message: searchParams.message }
+    : null;
 
   return (
     <main className="min-h-screen w-full flex items-center justify-center">
@@ -25,14 +43,17 @@ export default async function Signup(props: {
           Already have an account?{" "}
           <Link
             className="text-foreground font-medium underline"
-            href="/sign-in"
+            href={`/sign-in${returnTo ? `?returnTo=${returnTo}` : ''}`}
           >
             Sign in
           </Link>
         </p>
         <div className="flex flex-col gap-2 w-full max-w-xs">
-          <Button onClick={signInWithGoogleAction}>Continue with Google</Button>
-          <FormMessage message={searchParams} />
+          <GoogleSignInButton
+            signInWithGoogle={signInWithGoogleAction}
+            returnTo={returnTo}
+          />
+          {message && <FormMessage message={message} />}
           <div className="relative my-2">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
@@ -46,7 +67,13 @@ export default async function Signup(props: {
           <form className="flex-1 flex flex-col min-w-64">
             <div className="flex flex-col gap-2 [&>input]:mb-3 mt-8">
               <Label htmlFor="email">Email</Label>
-              <Input name="email" placeholder="you@example.com" required />
+              <Input
+                name="email"
+                placeholder="you@example.com"
+                required
+                type="email"
+                autoComplete="email"
+              />
               <Label htmlFor="password">Password</Label>
               <Input
                 type="password"
@@ -54,9 +81,18 @@ export default async function Signup(props: {
                 placeholder="Your password"
                 minLength={6}
                 required
+                autoComplete="new-password"
               />
-              <Button formAction={signUpAction}>Sign up</Button>
-              <FormMessage message={searchParams} />
+              {returnTo && (
+                <input type="hidden" name="returnTo" value={returnTo} />
+              )}
+              <Button
+                formAction={signUpAction}
+                className="w-full"
+              >
+                Sign up
+              </Button>
+              {message && <FormMessage message={message} />}
             </div>
           </form>
         </div>

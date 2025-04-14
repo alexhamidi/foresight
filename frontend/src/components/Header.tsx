@@ -1,50 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "../../utils/supabase/client";
-import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "./ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
 
 export function Header() {
   const pathname = usePathname();
-  const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const { user, signOut } = useAuth();
   const [isHeaderOpen, setIsHeaderOpen] = useState(true);
   const isAuthPage =
     pathname.includes("/sign-in") || pathname.includes("/sign-up");
-  const supabase = createClient();
-
-  useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      console.log("user", user);
-      setUser(user);
-    };
-
-    getUser();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
 
   if (isAuthPage) {
     return null;
   }
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-  };
 
   return (
     <>
@@ -64,44 +36,54 @@ export function Header() {
 
       {isHeaderOpen && (
         <header
-          className={`flex items-center w-full  justify-between z-100 px-4 h-[50px] transition-all `}
+          className={`flex items-center w-full justify-between z-100 px-4 h-[50px] transition-all`}
         >
           {process.env.NODE_ENV === "development" && (
             <>
-              <nav className="flex items-center gap-3 ">
+              <nav className="flex items-center gap-3">
                 <Link
                   href="/"
                   title="Home"
-                  className={`px-3 py-1.5 text-xs rounded-full z-50 text-white transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded-full z-50 text-white transition-colors ${
                     pathname === "/"
                       ? "bg-zinc-800/60 hover:bg-zinc-800/60"
                       : "bg-zinc-400/50 hover:bg-zinc-500/50"
                   }`}
                 >
-                  Search
+                  search
                 </Link>
                 <Link
                   href="/explore"
                   title="Open Explore"
-                  className={`px-3 py-1.5 text-xs rounded-full z-50 text-white transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded-full z-50 text-white transition-colors ${
                     pathname === "/explore"
                       ? "bg-zinc-800/60 hover:bg-zinc-800/60"
                       : "bg-zinc-400/50 hover:bg-zinc-500/50"
                   }`}
                 >
-                  Explore
+                  explore
                 </Link>
-
                 <Link
                   href="/notes"
                   title="Open Notes"
-                  className={`px-3 py-1.5 text-xs rounded-full z-50 text-white transition-colors ${
-                    pathname === "/notes"
+                  className={`px-3 py-1.5 text-sm rounded-full z-50 text-white transition-colors ${
+                    pathname === "/notes" || pathname.includes("/notes/")
                       ? "bg-zinc-800/60 hover:bg-zinc-800/60"
                       : "bg-zinc-400/50 hover:bg-zinc-500/50"
                   }`}
                 >
-                  Notes
+                  ideas
+                </Link>
+                <Link
+                  href="/pro"
+                  title="Open Pro"
+                  className={`px-3 py-1.5 text-sm rounded-full z-50 text-white transition-colors ${
+                    pathname === "/pro"
+                      ? "bg-amber-500/60 hover:bg-amber-500/60"
+                      : "bg-amber-300/50 hover:bg-amber-400/50"
+                  }`}
+                >
+                  pro
                 </Link>
               </nav>
 
@@ -110,33 +92,37 @@ export function Header() {
                   <div className="flex items-center gap-3">
                     <Link
                       href="/settings"
-                      title="ktings"
-                      className="px-3 py-1.5 text-xs rounded-full bg-zinc-200/50 z-50 hover:bg-zinc-300/50 transition-colors"
+                      title="Settings"
+                      className={`px-3 py-1.5 text-sm rounded-full bg-zinc-200/50 z-50 hover:bg-zinc-300/50 transition-colors ${
+                        pathname === "/settings"
+                          ? "bg-zinc-400/60 hover:bg-zinc-400/60"
+                          : "bg-zinc-300/50 hover:bg-zinc-400/50"
+                      }`}
                     >
-                      Settings
+                      settings
                     </Link>
-                    <div
-                      onClick={handleSignOut}
-                      className="cursor-pointer px-3 py-1.5 text-xs rounded-full bg-zinc-200/50 hover:bg-zinc-300/50 transition-colors"
+                    <button
+                      onClick={signOut}
+                      className="cursor-pointer px-3 py-1.5 text-sm rounded-full bg-zinc-200/50 hover:bg-zinc-300/50 transition-colors"
                     >
-                      Sign Out
-                    </div>
+                      sign out
+                    </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-3 ">
+                  <div className="flex items-center gap-3">
                     <Link
                       href="/sign-up"
                       title="Create an account"
-                      className="px-3 py-1.5 text-xs rounded-full bg-zinc-200/50 z-50 hover:bg-zinc-300/50 transition-colors"
+                      className="px-3 py-1.5 text-sm rounded-full bg-zinc-200/50 z-50 hover:bg-zinc-300/50 transition-colors"
                     >
-                      Sign Up
+                      sign up
                     </Link>
                     <Link
                       href="/sign-in"
                       title="Login to your account"
-                      className="px-3 py-1.5 text-xs rounded-full bg-zinc-200/50 z-50 hover:bg-zinc-300/50 transition-colors"
+                      className="px-3 py-1.5 text-sm rounded-full bg-zinc-200/50 z-50 hover:bg-zinc-300/50 transition-colors"
                     >
-                      Sign In
+                      sign in
                     </Link>
                   </div>
                 )}

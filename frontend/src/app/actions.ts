@@ -5,7 +5,7 @@ import { createClient } from "../../utils/supabase/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-export const signInWithGoogleAction = async () => {
+export const signInWithGoogleAction = async (returnTo?: string) => {
   console.log("signing in with google");
   const origin = (await headers()).get("origin");
   const supabase = await createClient();
@@ -13,7 +13,7 @@ export const signInWithGoogleAction = async () => {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${origin}/auth/callback`,
+      redirectTo: `${origin}/auth/callback${returnTo ? `?returnTo=${returnTo}` : ''}`,
     },
   });
 
@@ -42,6 +42,7 @@ export const signOutAction = async () => {
 export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
+  const returnTo = formData.get("returnTo") as string | null;
   const supabase = await createClient();
   const origin = (await headers()).get("origin");
 
@@ -57,7 +58,7 @@ export const signUpAction = async (formData: FormData) => {
     email,
     password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: `${origin}/auth/callback${returnTo ? `?returnTo=${returnTo}` : ''}`,
     },
   });
 
@@ -76,6 +77,7 @@ export const signUpAction = async (formData: FormData) => {
 export const signInAction = async (formData: FormData) => {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const returnTo = formData.get("returnTo") as string | null;
   const supabase = await createClient();
 
   const {
@@ -130,7 +132,7 @@ export const signInAction = async (formData: FormData) => {
     }
   }
 
-  return redirect("/");
+  return redirect(returnTo || "/");
 };
 
 export const forgotPasswordAction = async (formData: FormData) => {

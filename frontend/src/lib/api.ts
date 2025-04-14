@@ -26,19 +26,4 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// Add response interceptor
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      // Handle 401 errors - could be expired token
-      const { error: signOutError } = await supabase.auth.signOut();
-      if (!signOutError) {
-        window.location.href = "/sign-in";
-      }
-    }
-    return Promise.reject(error);
-  },
-);
-
 export default api;

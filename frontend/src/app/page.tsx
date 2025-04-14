@@ -120,9 +120,6 @@ export default function Login(props: { searchParams: Message }) {
       <main className="h-[calc(100vh-50px)]">
         <FeedbackButton />
         {/* Background layer */}
-        <div className="fixed inset-0 w-full h-full z-0">
-          <DynamicGrid />
-        </div>
 
         {/* Content layer */}
         <div className="relative z-10  overflow-y-auto pt-[6vh]">

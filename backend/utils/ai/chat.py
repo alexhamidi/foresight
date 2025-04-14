@@ -12,10 +12,29 @@ from utils.ai.utils import search_wrapper
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 logger = setup_logger("ai")
 
+
+# also tavily and db
+
 #========================================
 # Chat Functions
 #========================================
-async def run_idea_chat_basic_agent(chat_context, idea: str, prompt: str) -> str:
+
+async def get_agent_idea_chat(chat_context, idea: str, prompt: str) -> str:
+    """Run a basic agent that can search and reason about ideas.
+
+    Args:
+        chat_context: Previous chat context
+        idea: The idea/project being discussed
+        prompt: The user's current query
+
+
+    Returns:
+        The agent's response after reasoning and searching
+    """
+
+
+
+async def get_search_idea_chat(chat_context, idea: str, prompt: str) -> str: # basic agent workflow
     """Run a basic agent that can search and reason about ideas.
 
     Args:
@@ -102,7 +121,10 @@ Keep your thoughts concise and focused. If using search_items, include a specifi
 
     return final_content
 
-def get_idea_chat_response(chat_context, idea: str, prompt: str) -> str:
+
+
+
+def get_normal_idea_chat(chat_context, idea: str, prompt: str) -> str:
     """Get a simple chat response about an idea without agent capabilities.
 
     Args:

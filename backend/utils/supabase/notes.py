@@ -24,6 +24,23 @@ if not supabase_url or not supabase_key:
 #========================================
 # Note Management Functions
 #========================================
+
+
+async def get_user_note(note_id: str, user_id: str) -> dict[str, Any]:
+    """Get a specific note for a user."""
+    try:
+        response = await (
+            asupabase.from_('notes')
+            .select('id, name, content, created_at, user_id, customers, competitors, chats(id, role, content)')
+            .eq('user_id', user_id)
+            .eq('id', note_id)
+        ).execute()
+        return response.data[0]
+    except Exception as e:
+        logging.error(f"Error fetching note {note_id} for user {user_id}: {str(e)}")
+        raise
+
+
 async def get_user_notes(user_id: str) -> List[dict[str, Any]]:
     """Get all notes and their associated chats for a specific user.
 
@@ -36,7 +53,7 @@ async def get_user_notes(user_id: str) -> List[dict[str, Any]]:
     try:
         response = await (
             asupabase.from_('notes')
-            .select('id, name, content, created_at, user_id, chats(id, role, content)')
+            .select('id, name, content, created_at, user_id, customers, competitors, chats(id, role, content)')
             .eq('user_id', user_id)
         ).execute()
         return response.data
@@ -146,6 +163,14 @@ async def update_messages(user_id: str, note_id: str, prompt: str, ai_response: 
         }).execute()
     except Exception as e:
         logging.error(f"Error creating chat messages for note {note_id}: {str(e)}")
+        raise
+
+async def delete_chats(user_id: str, note_id: str) -> None:
+    """Delete all chats for a specific note"""
+    try:
+        await asupabase.table('chats').delete().eq('note_id', note_id).execute()
+    except Exception as e:
+        logging.error(f"Error deleting chats for note {note_id} for user {user_id}: {str(e)}")
         raise
 
 

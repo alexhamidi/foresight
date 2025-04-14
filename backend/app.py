@@ -1,7 +1,7 @@
 # =======================================================================#
 # IMPORTS
 # =======================================================================#
-from fastapi import FastAPI, HTTPException, Query, Depends, Cookie, Body
+from fastapi import FastAPI, HTTPException, Query, Depends, Cookie, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from dotenv import load_dotenv
@@ -12,6 +12,7 @@ from utils.supabase import init
 from utils.supabase import notes as nsup
 from utils.supabase import feedback as fsup
 from utils.supabase import items as isup
+from utils.supabase import profiles as psup
 from utils.logger import setup_logger
 from utils import embedding as emb, arxiv
 from fastapi.responses import StreamingResponse
@@ -23,6 +24,7 @@ import schedule
 from scripts.daily_update import update_task
 from typing import Optional
 from pydantic import BaseModel
+import stripe
 
 
 # =======================================================================#
@@ -110,6 +112,8 @@ class NoteCreate(BaseModel):
 class NoteUpdate(BaseModel):
     name: Optional[str] = None
     content: Optional[str] = None
+    customers: Optional[str] = None
+    competitors: Optional[str] = None
 
 async def get_current_user(jwt: Optional[str] = Cookie(None, alias="sb-access-token")) -> str:
 
@@ -286,6 +290,18 @@ async def search(
 # NOTE ENDPOINTS
 # =======================================================================#
 
+@app.get("/api/notes/{note_id}")
+async def get_note(note_id: str, user_id: str = Depends(get_current_user)):
+    print(f"Getting note: {note_id} for user: {user_id}")
+    """Get a specific note for the authenticated user"""
+    try:
+        note = await nsup.get_user_note(note_id, user_id)
+        return {"note": note}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 @app.get("/api/notes")
 async def get_notes(user_id: str = Depends(get_current_user)):
     print(f"Getting notes for user: {user_id}")
@@ -344,17 +360,122 @@ async def chat(request: dict = Body(...), user_id: str = Depends(get_current_use
         prompt = request.get("prompt")
         idea = request.get("idea")
         chat_context = request.get("chat_context")
-        print(f"chat_context: {chat_context}")
+        chat_mode = request.get("chat_mode")
+
         if not prompt:
             raise HTTPException(status_code=400, detail="message content is required")
 
-        ai_response = await cai.get_idea_chat_response(chat_context, idea, prompt)
+        ai_response = cai.get_normal_idea_chat(chat_context, idea, prompt) if chat_mode == "normal" \
+                 else (await cai.get_search_idea_chat(chat_context, idea, prompt)) if chat_mode == "search" \
+                 else (await cai.get_agent_idea_chat(chat_context, idea, prompt))# if chat_mode == "agent"
+
         await nsup.update_messages(user_id, note_id, prompt, ai_response)
 
         return {"message": ai_response}
     except Exception as e:
         logger.error(f"Error in chat: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/chat/{note_id}")
+async def delete_chats(note_id: str, user_id: str = Depends(get_current_user)):
+    """Delete all chats for a specific note"""
+    try:
+        await nsup.delete_chats(user_id, note_id)
+        return {"status": "success", "message": "Chat deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+# =======================================================================#
+# User Endpoints
+# =======================================================================#
+
+@app.get("/api/user/plan")
+async def get_user_plan(user_id: str = Depends(get_current_user)):
+    """Get the user's current plan and info"""
+    try:
+        plan_info = await psup.get_plan_info(user_id)
+        return {"plan_info": plan_info}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =======================================================================#
+# Payment Endpoints
+# =======================================================================#
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
+@app.post("/create-checkout-session")
+async def create_checkout_session(user_id: str = Depends(get_current_user)):
+    """Create a Stripe checkout session for subscription"""
+    try:
+        price_id = os.getenv('STRIPE_PRICE_ID')
+        if not price_id:
+            raise ValueError("STRIPE_PRICE_ID not configured in environment variables")
+
+        # Create the checkout session
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price': price_id,
+                'quantity': 1,
+            }],
+            mode='subscription',
+            success_url=f"{FRONTEND_URL[0]}/success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{FRONTEND_URL[0]}/cancel",
+            client_reference_id=user_id,  # Store the user ID for reference
+        )
+
+        # Return the session ID instead of client secret
+        return {"sessionId": checkout_session.id}
+    except ValueError as e:
+        logger.error(f"Configuration error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creating checkout session: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/webhook")
+async def stripe_webhook(request: Request):
+    """Handle Stripe webhooks for subscription events"""
+    try:
+        # Get the webhook secret from environment variables
+        webhook_secret = os.getenv('STRIPE_WEBHOOK_SECRET')
+
+        # Get the webhook data
+        payload = await request.body()
+        sig_header = request.headers.get('stripe-signature')
+
+        try:
+            # Verify the webhook signature
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, webhook_secret
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail='Invalid payload')
+        except stripe.error.SignatureVerificationError as e:
+            raise HTTPException(status_code=400, detail='Invalid signature')
+
+        # Handle the event
+        if event['type'] == 'checkout.session.completed':
+            session = event['data']['object']
+            # Update user's subscription status in your database
+            user_id = session.client_reference_id
+            await psup.update_user_subscription(user_id, 'PRO')
+
+        elif event['type'] == 'customer.subscription.deleted':
+            subscription = event['data']['object']
+            # Handle subscription cancellation
+            user_id = subscription.client_reference_id
+            await psup.update_user_subscription(user_id, 'FREE')
+
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Error handling webhook: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 # =======================================================================#
 # RUN THE APPLICATION
