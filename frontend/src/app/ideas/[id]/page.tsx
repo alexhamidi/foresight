@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../../utils/supabase/client";
 import { isAxiosError } from "axios";
 import { Idea, Message, SearchFilters } from "@/interfaces";
-import IdeaContent from "@/components/ideas/IdeaContent";
-import IdeaChat from "@/components/ideas/IdeaChat";
+import IdeaContent, { IdeaContentRef } from "@/components/ideas/IdeaContent";
+import IdeaChat, { IdeaChatRef } from "@/components/ideas/IdeaChat";
 
 const supabase = createClient();
 
@@ -22,8 +22,10 @@ export default function IdeaPage({ params }: PageParams) {
   const [isLoading, setIsLoading] = useState(true);
   const [input, setInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
-  const [selectedSection, setSelectedSection] = useState<'idea' | 'customers' | 'competitors'>('idea');
+  const [selectedSection, setSelectedSection] = useState<'main' | 'customers' | 'competitors' | 'diagram'>('main');
   const router = useRouter();
+  const contentRef = useRef<IdeaContentRef>(null);
+  const chatRef = useRef<IdeaChatRef>(null);
 
   // Fetch idea on component mount
   useEffect(() => {
@@ -32,7 +34,7 @@ export default function IdeaPage({ params }: PageParams) {
 
   // Listen for section changes
   useEffect(() => {
-    const handleSectionChange = (event: CustomEvent<{ section: 'idea' | 'customers' | 'competitors', ideaId: string }>) => {
+    const handleSectionChange = (event: CustomEvent<{ section: 'main' | 'customers' | 'competitors' | 'diagram', ideaId: string }>) => {
       if (event.detail.ideaId === id) {
         setSelectedSection(event.detail.section);
       }
@@ -54,6 +56,31 @@ export default function IdeaPage({ params }: PageParams) {
 
     return () => clearTimeout(timeoutId);
   }, [idea?.content, idea?.customers, idea?.competitors]);
+
+  // Add keyboard shortcut handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'j' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        if (!isChatbarOpen) {
+          setIsChatbarOpen(true);
+          setTimeout(() => chatRef.current?.focus(), 100);
+        } else {
+          const activeElement = document.activeElement;
+          const isInChat = activeElement?.closest('form') !== null;
+
+          if (isInChat) {
+            contentRef.current?.focus();
+          } else {
+            chatRef.current?.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isChatbarOpen]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -104,12 +131,15 @@ export default function IdeaPage({ params }: PageParams) {
   const handleContentChange = (value: string) => {
     setIdea((prev) => {
       if (!prev) return null;
-      if (selectedSection === 'customers') {
-        return { ...prev, customers: value };
-      } else if (selectedSection === 'competitors') {
-        return { ...prev, competitors: value };
-      } else {
-        return { ...prev, content: value };
+      switch (selectedSection) {
+        case 'customers':
+          return { ...prev, customers: value };
+        case 'competitors':
+          return { ...prev, competitors: value };
+        case 'main':
+          return { ...prev, content: value };
+        default:
+          return prev;
       }
     });
   };
@@ -124,7 +154,7 @@ export default function IdeaPage({ params }: PageParams) {
   const handleDownload = () => {
     if (idea) {
       const content = getCurrentContent();
-      const fileName = selectedSection !== 'idea' ? `${idea.name}_${selectedSection}` : idea.name;
+      const fileName = selectedSection !== 'main' ? `${idea.name}_${selectedSection}` : idea.name;
       const blob = new Blob([content], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -140,7 +170,7 @@ export default function IdeaPage({ params }: PageParams) {
   const handleShare = () => {
     if (idea) {
       const content = getCurrentContent();
-      const fileName = selectedSection !== 'idea' ? `${idea.name}_${selectedSection}` : idea.name;
+      const fileName = selectedSection !== 'main' ? `${idea.name}_${selectedSection}` : idea.name;
       const blob = new Blob([content], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -153,50 +183,6 @@ export default function IdeaPage({ params }: PageParams) {
     }
   };
 
-  const handleApplyEdits = (edits: { start_line: number, end_line: number, updated_text: string }[]) => {
-    if (!idea) return;
-    console.log(edits);
-
-    // Get the current content based on selected section
-    let content = getCurrentContent();
-    if (!content) content = ''; // Initialize empty content instead of returning
-
-    // Split content into lines, ensuring at least one empty line exists
-    let lines = content ? content.split('\n') : [''];
-
-    // Sort edits by line number in descending order to avoid offset issues
-    const sortedEdits = edits.sort((a, b) => b.start_line - a.start_line);
-
-    // Apply each edit
-    for (const { start_line, end_line, updated_text } of sortedEdits) {
-      // Ensure we have enough lines to reach the target line
-      while (lines.length <= end_line) {
-        lines.push('');
-      }
-
-      // Handle line numbers starting from 0
-      const startIndex = Math.max(0, start_line);
-      const endIndex = Math.min(lines.length - 1, end_line);
-
-      // Replace the lines with the updated text
-      lines.splice(startIndex, endIndex - startIndex + 1, updated_text);
-    }
-
-    // Join the lines back together and trim any trailing empty lines
-    const updatedContent = lines.join('\n').replace(/\n+$/, '');
-
-    // Update the appropriate section in the idea
-    setIdea(prev => {
-      if (!prev) return null;
-      if (selectedSection === 'customers') {
-        return { ...prev, customers: updatedContent };
-      } else if (selectedSection === 'competitors') {
-        return { ...prev, competitors: updatedContent };
-      } else {
-        return { ...prev, content: updatedContent };
-      }
-    });
-  };
 
   // interface Edit {
   //     start_line: number;
@@ -210,14 +196,16 @@ export default function IdeaPage({ params }: PageParams) {
     idea_content: string;
     idea_id: string;
     chat_context: Message[];
-    chat_mode: 'normal' | 'search' | 'ai search' | 'agent';
+    chat_mode: 'normal' | 'search' | 'agent';
     editing_active: boolean;
     recency?: number;
     num_results?: number;
     valid_sources?: string[];
+    selected_section?: 'main' | 'customers' | 'competitors' | 'diagram';
+    section_content?: string;
   }
 
-  const handleChatSubmit = async (e: React.FormEvent, chatMode: 'normal' | 'search' | 'ai search'| 'agent', editingActive: boolean, filters: SearchFilters) => {
+  const handleChatSubmit = async (e: React.FormEvent, chatMode: 'normal' | 'search' | 'agent', editingActive: boolean, filters: SearchFilters) => {
     e.preventDefault();
     if (!input.trim() || isChatLoading || !idea) return;
     const prevInput = input;
@@ -239,6 +227,8 @@ export default function IdeaPage({ params }: PageParams) {
       prompt: userMessage.content,
       idea_name: idea.name,
       idea_content: idea.content,
+      selected_section: selectedSection,
+      section_content: selectedSection === 'customers' ? idea.customers : selectedSection === 'competitors' ? idea.competitors : undefined,
       idea_id: idea.id,
       chat_context: chatContext,
       chat_mode: chatMode,
@@ -272,8 +262,23 @@ export default function IdeaPage({ params }: PageParams) {
           chats: [...prev.chats, aiMessage],
         };
       });
-      if (response.data.edits) {
-        handleApplyEdits(response.data.edits);
+      if (response.data.updated_content) {
+        if (selectedSection === 'customers') {
+          setIdea((prev) => {
+            if (!prev) return null;
+            return { ...prev, customers: response.data.updated_content };
+          });
+        } else if (selectedSection === 'competitors') {
+          setIdea((prev) => {
+            if (!prev) return null;
+            return { ...prev, competitors: response.data.updated_content };
+          });
+        } else {
+          setIdea((prev) => {
+            if (!prev) return null;
+            return { ...prev, content: response.data.updated_content };
+          });
+        }
       }
       setIsChatLoading(false);
 
@@ -293,12 +298,15 @@ export default function IdeaPage({ params }: PageParams) {
 
   const getCurrentContent = () => {
     if (!idea) return '';
-    if (selectedSection === 'customers') {
-      return idea.customers;
-    } else if (selectedSection === 'competitors') {
-      return idea.competitors;
-    } else {
-      return idea.content;
+    switch (selectedSection) {
+      case 'customers':
+        return idea.customers;
+      case 'competitors':
+        return idea.competitors;
+      case 'main':
+        return idea.content;
+      default:
+        return '';
     }
   };
 
@@ -323,6 +331,7 @@ export default function IdeaPage({ params }: PageParams) {
   return (
     <>
       <IdeaContent
+        ref={contentRef}
         idea={idea}
         isLoading={isLoading}
         selectedSection={selectedSection}
@@ -332,6 +341,7 @@ export default function IdeaPage({ params }: PageParams) {
         handleShare={handleShare}
       />
       <IdeaChat
+        ref={chatRef}
         idea={idea}
         isLoading={isLoading}
         isChatbarOpen={isChatbarOpen}
@@ -341,6 +351,7 @@ export default function IdeaPage({ params }: PageParams) {
         handleChatSubmit={handleChatSubmit}
         setIsChatbarOpen={setIsChatbarOpen}
         handleClearChat={handleClearChat}
+        selectedSection={selectedSection}
       />
     </>
   );

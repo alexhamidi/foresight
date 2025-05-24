@@ -269,13 +269,13 @@ export default function DynamicGrid() {
   // );
   return (
     <>
-      <Image
+      {/* <Image
         src="/beau.png"
         alt="grid"
         width={1440}
         height={900}
         className="opacity-100"
-      />
+      /> */}
     </>
   );
 }

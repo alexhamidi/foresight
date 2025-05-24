@@ -74,17 +74,19 @@ export default function IdeaSidebar({
             <div className="flex-1 overflow-y-auto border-t">
               {ideas.map((idea) => (
                 <div key={idea.id}>
-                  <Link
-                    href={`/ideas/${idea.id}`}
+                  <div
+                    className={`flex items-center justify-between px-3 py-2 m-1 hover:bg-zinc-300/40 text-sm rounded-lg cursor-pointer`}
                     onClick={(e) => {
                       e.preventDefault();
-                      handleIdeaClick(idea.id);
+                      setExpandedIdeas((prev) => {
+                        const newState: Record<string, boolean> = {};
+                        Object.keys(prev).forEach(
+                          (key) => (newState[key] = false)
+                        );
+                        newState[idea.id] = !prev[idea.id];
+                        return newState;
+                      });
                     }}
-                    className={`flex items-center justify-between px-3 py-2 m-1 hover:bg-zinc-300/40 text-sm rounded-lg cursor-pointer ${
-                      currentIdeaId === idea.id
-                        ? `mb-0 ${selectedSection === 'idea' ? 'font-bold mb-0' : ''}`
-                        : ""
-                    }`}
                   >
                     {isRenaming && renamingIdeaId === idea.id ? (
                       <input
@@ -124,38 +126,24 @@ export default function IdeaSidebar({
                           >
                             <Trash className="h-4 w-4" />
                           </button>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setExpandedIdeas((prev) => {
-                                const newState: Record<string, boolean> = {};
-                                Object.keys(prev).forEach(
-                                  (key) => (newState[key] = false)
-                                );
-                                newState[idea.id] = !prev[idea.id];
-                                return newState;
-                              });
-                            }}
-                            className="opacity-60 px-2 hover:opacity-100 hover:bg-transparent"
-                          >
-                            <ChevronRight
-                              className={`h-4 w-4 transform transition-transform ${
-                                expandedIdeas[idea.id] ? "rotate-90" : ""
-                              }`}
-                            />
-                          </button>
+                          <ChevronRight
+                            className={`h-4 w-4 transform transition-transform opacity-60 duration-300 ${
+                              expandedIdeas[idea.id] ? "rotate-90" : ""
+                            }`}
+                          />
                         </div>
                       </>
                     )}
-                  </Link>
-                  {expandedIdeas[idea.id] && (
-                    <IdeaSectionNav
-                      ideaId={idea.id}
-                      currentIdeaId={currentIdeaId}
-                      selectedSection={selectedSection}
-                    />
-                  )}
+                  </div>
+                  <div className="grid transition-[grid-template-rows] duration-300 ease-in-out" style={{ gridTemplateRows: expandedIdeas[idea.id] ? '1fr' : '0fr' }}>
+                    <div className="overflow-hidden">
+                      <IdeaSectionNav
+                        ideaId={idea.id}
+                        currentIdeaId={currentIdeaId}
+                        selectedSection={selectedSection}
+                      />
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

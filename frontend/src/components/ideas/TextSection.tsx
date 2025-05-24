@@ -1,12 +1,12 @@
 import { Idea } from "@/interfaces";
 import { Button } from "@/components/ui/button";
 import { Copy, Download, Share, Eye, Edit2 } from "lucide-react";
-import { useState } from "react";
+import { useState, forwardRef, useImperativeHandle, useRef } from "react";
 import MarkdownMessage from "@/components/chat/MarkdownMessage";
 
 interface IdeaSectionProps {
   idea: Idea | null;
-  section: 'idea' | 'customers' | 'competitors' | 'diagram';
+  section: 'main' | 'customers' | 'competitors' | 'diagram';
   content: string;
   onChange: (value: string) => void;
   handleCopy: () => void;
@@ -14,8 +14,19 @@ interface IdeaSectionProps {
   handleShare: () => void;
 }
 
-export default function TextSection({ idea, section, content, onChange, handleCopy, handleDownload, handleShare }: IdeaSectionProps) {
+export interface TextSectionRef {
+  focus: () => void;
+}
+
+const TextSection = forwardRef<TextSectionRef, IdeaSectionProps>(({ idea, section, content, onChange, handleCopy, handleDownload, handleShare }, ref) => {
   const [isPreview, setIsPreview] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      textareaRef.current?.focus();
+    }
+  }));
 
   const getPlaceholder = () => {
     switch (section) {
@@ -23,6 +34,8 @@ export default function TextSection({ idea, section, content, onChange, handleCo
         return "Write about your customers...";
       case 'competitors':
         return "Write about your competitors...";
+      case 'main':
+        return "Write about your idea...";
       default:
         return "Start writing...";
     }
@@ -36,7 +49,8 @@ export default function TextSection({ idea, section, content, onChange, handleCo
         </div>
       ) : (
         <textarea
-          value={content}
+          ref={textareaRef}
+          value={content || ''}
           onChange={(e) => onChange(e.target.value)}
           className="outline-0 resize-none bg-white/30 border-t border-zinc-300 backdrop-blur-xs w-full flex-1 p-4"
           placeholder={getPlaceholder()}
@@ -58,4 +72,8 @@ export default function TextSection({ idea, section, content, onChange, handleCo
       </div>
     </div>
   );
-}
+});
+
+TextSection.displayName = "TextSection";
+
+export default TextSection;

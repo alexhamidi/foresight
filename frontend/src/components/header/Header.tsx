@@ -15,7 +15,7 @@ export function Header() {
 
     pathname.includes("/sign-in") || pathname.includes("/sign-up");
 
-  if (isAuthPage) {
+  if (true) {
     return null;
   }
 
@@ -53,17 +53,17 @@ export function Header() {
                 >
                   search
                 </Link>
-                {/* <Link
-                  href="/explore"
-                  title="Open Explore"
+                <Link
+                  href="/agent"
+                  title="Browser Search"
                   className={`px-3 py-1.5 text-sm rounded-full z-50 text-white transition-colors ${
-                    pathname === "/explore"
+                    pathname === "/agent"
                       ? "bg-zinc-800/60 hover:bg-zinc-800/60"
                       : "bg-zinc-400/50 hover:bg-zinc-500/50"
                   }`}
                 >
-                  explore
-                </Link> */}
+                  agent
+                </Link>
                 <Link
                   href="/ideas"
                   title="Open Ideas"

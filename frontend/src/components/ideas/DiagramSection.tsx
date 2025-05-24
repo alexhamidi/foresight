@@ -3,7 +3,6 @@ import 'tldraw/tldraw.css'
 
 const saveEditorState = () => {
 
-
 }
 
 export default function DiagramSection() {
@@ -11,9 +10,8 @@ export default function DiagramSection() {
     <div className="flex flex-col h-full">
       <div className="relative flex-1 z-10 ">
         <Tldraw
-          components={{}}
-          cameraOptions={{
-            isLocked: true,
+          components={{
+            StylePanel: () => null,
           }}
           className="border-t border-zinc-300 opacity-80 "
         />
@@ -21,4 +19,5 @@ export default function DiagramSection() {
     </div>
   );
 }
+
 

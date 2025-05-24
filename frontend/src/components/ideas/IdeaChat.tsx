@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { ChevronLeft, X, ChevronRight, ArrowUp, MoreHorizontal } from "lucide-react";
 import { Idea, Message, SearchFilters } from "@/interfaces";
 import MarkdownMessage from "@/components/chat/MarkdownMessage";
-import { useRef, Dispatch, SetStateAction, useState, useEffect } from "react";
+import { useRef, Dispatch, SetStateAction, useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { Switch } from "@/components/ui/switch";
 import {
   DropdownMenu,
@@ -24,7 +24,7 @@ import { LIMITS } from "@/constants/limits";
 import { categories } from "@/constants/categories";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import SearchResults from "@/components/search/SearchResults";
-type ChatMode = 'normal' | 'search' | 'ai search' | 'agent';
+type ChatMode = 'normal' | 'search' | 'agent';
 type SourceOption = "reddit" | "product_hunt" | "y_combinator" | "arxiv" | "hacker_news";
 
 interface UsageLimits {
@@ -44,6 +44,11 @@ interface IdeaChatProps {
   handleChatSubmit: (e: React.FormEvent, chatMode: ChatMode, editingActive: boolean, filters: SearchFilters) => void;
   setIsChatbarOpen: Dispatch<SetStateAction<boolean>>;
   handleClearChat: (idea_id: string) => void;
+  selectedSection: 'main' | 'customers' | 'competitors' | 'diagram';
+}
+
+export interface IdeaChatRef {
+  focus: () => void;
 }
 
 const sourceOptions = [
@@ -68,7 +73,7 @@ const resultCountOptions = [
   { value: "100", label: "100 results" },
 ] as const;
 
-export default function IdeaChat({
+const IdeaChat = forwardRef<IdeaChatRef, IdeaChatProps>(({
   idea,
   isLoading,
   isChatbarOpen,
@@ -78,8 +83,10 @@ export default function IdeaChat({
   handleChatSubmit,
   setIsChatbarOpen,
   handleClearChat,
-}: IdeaChatProps) {
+  selectedSection,
+}, ref) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [chatMode, setChatMode] = useState<ChatMode>('normal');
   const [usageLimits, setUsageLimits] = useState<UsageLimits | null>(null);
   const [editingActive, setEditingActive] = useState<boolean>(false);
@@ -119,7 +126,26 @@ export default function IdeaChat({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!showAtMentionDropdown) return;
+      if (e.key === 'Tab' && !showAtMentionDropdown) {
+        e.preventDefault();
+        if (!idea) return;
+
+        let content = '';
+        switch (selectedSection) {
+          case 'customers':
+            content = idea.customers;
+            break;
+          case 'competitors':
+            content = idea.competitors;
+            break;
+          case 'main':
+            content = idea.content;
+            break;
+          default:
+            return;
+        }
+        setInput(content);
+      } else if (!showAtMentionDropdown) return;
 
       switch (e.key) {
         case 'ArrowDown':
@@ -149,7 +175,7 @@ export default function IdeaChat({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showAtMentionDropdown, selectedOptionIndex, atMentionOptions]);
+  }, [showAtMentionDropdown, selectedOptionIndex, atMentionOptions, idea, selectedSection, setInput]);
 
   useEffect(() => {
     if (showAtMentionDropdown) {
@@ -170,9 +196,29 @@ export default function IdeaChat({
     };
   }, []);
 
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      inputRef.current?.focus();
+    }
+  }));
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleChatSubmit(e, chatMode, editingActive, filters);
+
+    // Start with the current filters
+    let effectiveFilters: SearchFilters = { ...filters };
+
+    // If in search mode and no sources are selected, use all sources
+    if (chatMode === 'search' && (!effectiveFilters.selectedSources || effectiveFilters.selectedSources.length === 0)) {
+      const allSources = sourceOptions.map(option => option.value as SourceOption);
+      effectiveFilters = {
+        ...effectiveFilters,
+        selectedSources: allSources,
+      };
+    }
+
+    // Use the potentially modified filters for submission
+    handleChatSubmit(e, chatMode, editingActive, effectiveFilters);
   };
 
   const getRemainingUses = (mode: ChatMode) => {
@@ -345,10 +391,6 @@ export default function IdeaChat({
                         <span>Search</span>
                         <span className="text-xs text-muted-foreground">{getRemainingUses('search')}</span>
                       </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="ai search" className="flex justify-between" onSelect={(e) => e.preventDefault()}>
-                        <span>AI Search</span>
-                        <span className="text-xs text-muted-foreground">{getRemainingUses('ai search')}</span>
-                      </DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="agent" className="flex justify-between" onSelect={(e) => e.preventDefault()}>
                         <span>Agent</span>
                         <span className="text-xs text-muted-foreground">{getRemainingUses('agent')}</span>
@@ -427,9 +469,10 @@ export default function IdeaChat({
                       </div>
                     )}
                     <Input
+                      ref={inputRef}
                       value={input}
                       onChange={handleInputChange}
-                      placeholder=""
+                      placeholder={chatMode === 'search' ? 'Press "tab" to populate with context' : chatMode === 'agent' ? 'Ask the agent...' : ''}
                       className={`bg-transparent border-none shadow-none py-6 px-3 rounded-xl`}
                     />
                   </div>
@@ -487,4 +530,8 @@ export default function IdeaChat({
       </Button>
     </>
   );
-}
+});
+
+IdeaChat.displayName = "IdeaChat";
+
+export default IdeaChat;

@@ -22,7 +22,6 @@ import { v4 as uuidv4 } from "uuid";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../utils/supabase/client";
 import { isAxiosError } from "axios";
-import Link from "next/link";
 import { Idea } from "@/interfaces";
 
 const supabase = createClient();

@@ -7,7 +7,6 @@ import uvicorn
 from dotenv import load_dotenv
 import os
 from utils.chat import normal as normal_chat
-from utils.chat import ai_search as ai_search_chat
 from utils.search import simple as simple_search
 from utils.supabase import init
 from utils.supabase import ideas
@@ -334,6 +333,26 @@ async def delete_idea(idea_id: str, user_id: str = Depends(get_current_user)):
 
 
 # =======================================================================#
+# Agent Endpoints
+# =======================================================================#
+
+# from utils.agent.OpenManus.main import run_agent_search
+
+# @app.get("/api/agent")
+# async def agent(prompt: str = Query(...)):
+
+
+#     print(prompt)
+#     try:
+
+#     # await run_agent_search(prompt)
+
+#         return {"result": "hi"}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
+
+
+# =======================================================================#
 # Chat Endpoints
 # =======================================================================#
 @app.post("/api/chat")
@@ -344,11 +363,12 @@ async def chat(request: dict = Body(...), user_id: str = Depends(get_current_use
         idea_id = request.get("idea_id")
         prompt = request.get("prompt")
         idea_content = request.get("idea_content")
+        selected_section = request.get("selected_section")
         idea_name = request.get("idea_name")
         chat_context = request.get("chat_context")
         chat_mode = request.get("chat_mode")
         editing_active = request.get("editing_active")
-
+        section_content = request.get("section_content")
 
         if not prompt:
             raise HTTPException(status_code=400, detail="message content is required")
@@ -358,18 +378,17 @@ async def chat(request: dict = Body(...), user_id: str = Depends(get_current_use
         if chat_mode in ["ai search", "agent", "normal"]:
             functions = {
                 "normal": normal_chat.get_normal_chat,
-                "ai search": ai_search_chat.get_ai_search_chat,
-                "agent": ai_search_chat.get_ai_search_chat,
+                "agent": normal_chat.get_normal_chat,
             }
 
-            ai_response, edits = await functions[chat_mode](chat_context, idea_name, idea_content, prompt, editing_active)
+            ai_response, updated_content = await functions[chat_mode](chat_context, idea_name, idea_content, prompt, editing_active, selected_section, section_content)
 
             print("ai_response", ai_response)
-            print("edits", edits)
+            print("updated_content", updated_content)
 
             await ideas.update_messages(user_id, idea_id, prompt, ai_response)
 
-            return {"message": ai_response, "edits": edits}
+            return {"message": ai_response, "updated_content": updated_content}
         else:
 
             sources = request.get("valid_sources")
