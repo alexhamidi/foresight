@@ -15,7 +15,7 @@ sys.path.append(str(project_root))
 from utils import embedding
 from utils.scraper import hackernews_scraper, reddit_scraper, product_hunt_scraper, ycombinator_scraper
 import asyncio
-from utils.logger import setup_logger
+from lib.logger import setup_logger
 
 
 # Initialize logger
