@@ -15,7 +15,7 @@ export function Header() {
 
     pathname.includes("/sign-in") || pathname.includes("/sign-up");
 
-  if (true) {
+  if (isAuthPage) {
     return null;
   }
 
